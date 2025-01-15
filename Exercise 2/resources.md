@@ -16,7 +16,7 @@ InternetAddress addr
 
 // a socket that plugs our program to the network. This is the "portal" to the outside world
 // alternate names: conn
-// UDP is sometimes called SOCK_DGRAM. You will sometimes also find UDPSocket or UDPConn as separate types
+// UDP is sometimes called SOCK_DGRAM. You will Exercise 2/udp.gosometimes also find UDPSocket or UDPConn as separate types
 recvSock = new Socket(udp)
 
 // bind the address we want to use to the socket

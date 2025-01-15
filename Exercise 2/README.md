@@ -102,7 +102,29 @@ Pencil and paper is encouraged! Drawing a diagram/graph of the message pathways 
      
  - Topology:
    - What kind of network topology do you want to implement? Peer to peer? Master slave? Circle? Something else?
-   - In the case of a master-slave configuration: Do you have only one program, or two (a "master" executable and a "slave")?
+   - In the case of a master-slave configuration: Do you have only one program, or two (a "master" executable and a "slave")? TCP
+--------
+
+There are three common ways to format a message: (Though there are probably others)
+ - 1: Always send fixed-sized messages
+ - 2: Send the message size with each message (as part of a fixed-size header)
+ - 3: Use some kind of marker to signify the end of a message
+
+The TCP server can send you two of these:
+ - Fixed size messages of size `1024`, if you connect to port `34933`
+ - Delimited messages that use `\0` as the marker, if you connect to port `33546`
+
+The server will read until it encounters the first `\0`, regardless. Strings in most programming languages are already null-terminated, but in case they aren't you will have to append your own null character.
+
+TCP guarantees that packets arrive in the order they are sent. But this does not mean that it guarantees that these packets are delivered individually (or that they are delivered at all, since you could always apply scissors to the network cable...). If you send several packets with no delay between them, they may be coalesced into a larger packet. The networking server is too simple to handle this (and fixing it is a very low priority), but you can disable the coalescing behavior on the sender-side by setting the socket option `TCP_NODELAY`.
+
+### Connecting:
+The IP address of the TCP server will be the same as the address the UDP server as spammed out on port 30000. Connect to the TCP server, using port `34933` for fixed-size messages, or port `33546` for 0-terminated messages. 
+
+The server will send you a welcome-message when you connect, and after that it will echo anything you say back to you (as long as your message ends with `'\0'`). Try sending and receiving a few messages.
+
+### Accepting connections:
+Tell the server to connect back to you, by sending a message of the form `Connect to: #.#.#.#:#\0` (IP of your machine and port you are listening to). You can find your own address by running `ifconfig` in the t
      - How do you handle a master node disconnecting?
      - Is a slave becoming a master a part of the network module?
    - In the case of a peer-to-peer configuration:
