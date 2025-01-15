@@ -38,6 +38,35 @@ func receiving(portNum int) {
 
 func sending(portNum int){
 
+	// format port number to string in proper format
+	address := fmt.Sprintf(":%d", portNum)
+
+	// Resolve the UDP address
+	udpAddr, err := net.ResolveUDPAddr("udp", address)
+	if err != nil {
+		log.Fatalf("Failed to resolve UDP address: %v", err)
+	}
+
+	// Create a UDP connection
+	conn, err := net.DialUDP("udp", nil, udpAddr)
+	if err != nil {
+		log.Fatalf("Failed to create UDP connection: %v", err)
+	}
+	defer conn.Close()
+
+	// About to send a message
+	log.Printf("Sending message to UDP port %d...", portNum)
+
+	// Message to send
+	message := "Hello from sending(table 15)!"
+
+	// Send the message
+	_, err = conn.Write([]byte(message))
+	if err != nil {
+		log.Printf("Failed to send message: %v", err)
+	} else {
+		log.Printf("Message sent: '%s'", message)
+	}
 
 
 }
