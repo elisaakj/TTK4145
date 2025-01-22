@@ -10,14 +10,16 @@ import (
 
 func receiving(portNum int) {
 
+	log.Print("Hello")
+
 	address := fmt.Sprintf(":%d", portNum)
 	udpAddr, err := net.ResolveUDPAddr("udp", address)
-	if err != nil{
-		log.Fatal("Failed to resolve UDP address: %v", err)
+	if err != nil {
+		log.Fatalf("Failed to resolve UDP address: %v", err)
 	}
 
 	conn, err := net.ListenUDP("udp", udpAddr)
-	if err != nil{
+	if err != nil {
 		log.Fatalf("Failed to start UDP listener: %v", err)
 	}
 	defer conn.Close()
@@ -25,18 +27,19 @@ func receiving(portNum int) {
 	log.Printf("Listening on UDP port %d...", portNum)
 
 	buffer := make([]byte, 1024)
+
 	for {
 		n, addr, err := conn.ReadFromUDP(buffer)
 		if err != nil {
-			log.Print("Error reading from UDP: %v", err)
+			log.Printf("Error reading from UDP: %v", err)
 			continue
 		}
 
-		log.Print("Received message '%s' from %s", string(buffer[:n]),addr)
+		log.Printf("Received message '%s' from %s", string(buffer[:n]), addr)
 	}
 }
 
-func sending(portNum int){
+func sending(portNum int) {
 
 	// format port number to string in proper format
 	address := fmt.Sprintf(":%d", portNum)
@@ -68,13 +71,12 @@ func sending(portNum int){
 		log.Printf("Message sent: '%s'", message)
 	}
 
-
 }
 
 func main() {
+	// log.Print("Hello")
 
 	go receiving(30000)
 
-	go sending(20015)
-
+	// go sending(20015)
 }

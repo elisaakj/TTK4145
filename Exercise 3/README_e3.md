@@ -55,7 +55,7 @@ The relevant part of that project is documented in Project-resources/elev_algo (
 
 Implementing the "single elevator control" component as a state machine is the preferred pattern, to the point where we might even dare call it the definitively correct approach. The details and analysis of this pattern are covered in greater detail in the lectures, but here is the short version of how to follow it:
 
- - Analysis:
+ - Analysis:        
    - Identify the inputs of the system, and consider them as discrete (in time) events
    - Identify the outputs of the system
    - Combine all inputs & outputs and store them (the "state") from one event to the next
