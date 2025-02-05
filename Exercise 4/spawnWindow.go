@@ -1,6 +1,13 @@
 package main
 
 import (
+<<<<<<< HEAD
+	"fmt"
+	"log"
+	"net"
+)
+
+=======
 	"encoding/binary"
 	"log"
 	"net"
@@ -79,3 +86,4 @@ func main() {
 		time.Sleep(1 * time.Second)
 	}
 }
+>>>>>>> 9fb3a21ac60a329a3fedeac97d7454b323ba4664
