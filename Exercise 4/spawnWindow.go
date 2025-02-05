@@ -12,11 +12,17 @@ var counter uint64
 var buffer = make([]byte, 16)
 
 func spawnBackupForWindows() {
-	err := exec.Command("cmd", "/C", "start", "powershell", "go", "run", "spawnWindow.go").Run()
+	// Command for windows
+
+	/*err := exec.Command("cmd", "/C", "start", "powershell", "go", "run", "spawnWindow.go").Run()
 
 	if err != nil {
 		log.Fatal(err)
-	}
+	}*/
+
+	// Command for linux
+
+	exec.Command("gnome-terminal", "--", "go", "run", "spawnWindow.go").Run()
 }
 
 func main() {

@@ -1,19 +1,27 @@
 package main
 
 import (
-	"fmt"
-	"time"
 
+	// "Network-go/network/bcast"
+	// "Network-go/network/localip"
+	// "Network-go/network/peers"
+
+	"fmt"
+	//"net"
+	"time"
 	// "./elevator_io_device.go"
 	// "fsm"
 	// "timer"
 )
+
 
 func main() {
 	fmt.Println("Started!")
 
 	inputPollRate := 25 * time.Millisecond
 	input := elevioGetInputDevice()
+
+	hardwareInit()
 
 	if input.floorSensor() == -1 {
 		fsmOnInitBetweenFloors()
