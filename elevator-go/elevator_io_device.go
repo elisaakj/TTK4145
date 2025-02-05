@@ -64,31 +64,31 @@ func elevioButtonToString(b Button) string {
 
 func elevioGetInputDevice() ElevInputDevice {
 	return ElevInputDevice{
-		floorSensor:    elevatorHardwareGetFloorSensorSignal,
+		floorSensor:    hardwareGetFloorSensorSignal,
 		requestButton:  wrapRequestButton,
-		stopButton:     elevatorHardwareGetStopSignal,
-		obstruction:    elevatorHardwareGetObstructionSignal,
+		stopButton:     hardwareGetStopSignal,
+		obstruction:    hardwareGetObstructionSignal,
 	}
 }
 
 func elevioGetOutputDevice() ElevOutputDevice {
 	return ElevOutputDevice{
-		floorIndicator:     elevatorHardwareSetFloorIndicator,
+		floorIndicator:     hardwareSetFloorIndicator,
 		requestButtonLight: wrapRequestButtonLight,
-		doorLight:          elevatorHardwareSetDoorOpenLamp,
-		stopButtonLight:    elevatorHardwareSetStopLamp,
+		doorLight:          hardwareSetDoorOpenLamp,
+		stopButtonLight:    hardwareSetStopLamp,
 		motorDirection:     wrapMotorDirection,
 	}
 }
 
 func wrapRequestButton(floor int, btn Button) int {
-	return elevatorHardwareGetButtonSignal(btn, floor)
+	return hardwareGetButtonSignal(btn, floor)
 }
 
 func wrapRequestButtonLight(floor int, btn Button, value int) {
-	elevatorHardwareSetButtonLamp(btn, floor, value)
+	hardwareSetButtonLamp(btn, floor, value)
 }
 
 func wrapMotorDirection(dirn Dirn) {
-	elevatorHardwareSetMotorDirection(dirn)
+	hardwareSetMotorDirection(dirn)
 }
