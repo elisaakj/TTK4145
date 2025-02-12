@@ -22,6 +22,8 @@ func main() {
 	input := elevioGetInputDevice()
 
 	hardwareInit()
+	prevStop := 0
+	prevObstr := 0
 
 	if input.floorSensor() == -1 {
 		fsmOnInitBetweenFloors()
@@ -50,19 +52,26 @@ func main() {
 
 		// Obstruction sensor
 		obstr := input.obstruction()
-		if obstr != 0 {
+		if obstr != 0 && prevObstr == 0 {  // Trigger only when obstruction starts
 			fmt.Println("Obstruction detected! Keeping doors open.")
-			timerStop()
+			fsmOnObstruction()
+		} else if obstr == 0 && prevObstr != 0 {  // Detect when obstruction is cleared
+			fmt.Println("Obstruction cleared. Resuming operation.")
+			fsmOnObstructionCleared()
 		}
+		prevObstr = obstr
 
 		// Stop button
 		stop := input.stopButton()
-		if stop != 0 {
+		if stop != 0 && prevStop == 0 {  // Trigger only when stop is pressed
 			fmt.Println("Emergency stop activated!")
-			timerStop()
-			fsmOnDoorTimeout()
+			fsmOnStopButton()
+		} else if stop == 0 && prevStop != 0 {  // Detect when stop is released
+			fmt.Println("Emergency stop cleared. Resuming operation.")
+			fsmOnStopCleared()
 		}
-		
+		prevStop = stop
+
 		//////////// Test end ///////////////
 
 		// Floor sensor
