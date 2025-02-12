@@ -109,8 +109,30 @@ func fsmOnDoorTimeout() {
 
 ////////////////////// Testing //////////////////////
 
-func fsmOnStopButton(){
+func fsmOnObstruction() {
+	fmt.Printf("\n\nfsmOnObstruction()\n")
+	elevatorPrint(elevator)
 
+	outputDevice.doorLight(1)
+	timerStop()
+
+	fmt.Println("\nNew state:")
+	elevatorPrint(elevator)
+}
+
+func fsmOnObstructionCleared() {
+	fmt.Printf("\n\nfsmOnObstructionCleared()\n")
+	elevatorPrint(elevator)
+
+	outputDevice.doorLight(0)
+	timerStart(elevator.config.doorOpenDurationS)
+
+	fmt.Println("\nNew state:")
+	elevatorPrint(elevator)
+}
+
+
+func fsmOnStopButton() {
 	fmt.Printf("\n\nfsmOnStopButton()\n")
 	elevatorPrint(elevator)
 	elevator.floor = -1
@@ -122,13 +144,12 @@ func fsmOnStopButton(){
 	elevatorPrint(elevator)
 }
 
-
-func fsmOnObstruction(){
-
-	fmt.Printf("\n\nfsmOnObstruction()\n")
+func fsmOnStopCleared() {
+	fmt.Printf("\n\nfsmOnStopCleared()\n")
 	elevatorPrint(elevator)
 
-	outputDevice.doorLight(1)
+	outputDevice.stopButtonLight(0)
+	fsmOnFloorArrival(elevator.floor)
 
 	fmt.Println("\nNew state:")
 	elevatorPrint(elevator)
