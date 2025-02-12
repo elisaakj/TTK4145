@@ -1,13 +1,6 @@
 package main
 
 import (
-<<<<<<< HEAD
-	"fmt"
-	"log"
-	"net"
-)
-
-=======
 	"encoding/binary"
 	"log"
 	"net"
@@ -65,7 +58,15 @@ func main() {
 	bcastConn, err := net.DialUDP("udp", nil, udpAddr)
 	if err != nil {
 		log.Printf("Failed to create UDP connection: %v", err)
-	}Exercise 3 Single elevator
+	}
+
+	for i := 0; i < 5; i++ {
+
+		if i == 0 && counter == 0 {
+			log.Println("\t| Starting at: ", counter, "\t|")
+		} else if i == 0 {
+			log.Println("\t| Continuing from number: ", counter, "\t|")
+		} else {
 			log.Println("\t| Number: ", counter, "\t|")
 		}
 
@@ -75,6 +76,6 @@ func main() {
 		_, err = bcastConn.Write([]byte(buffer))
 
 		time.Sleep(1 * time.Second)
+
 	}
 }
->>>>>>> 9fb3a21ac60a329a3fedeac97d7454b323ba4664
