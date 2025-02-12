@@ -46,12 +46,32 @@ func main() {
 			}
 		}
 
+		///////////// Testing ////////////////
+
+		// Obstruction sensor
+		obstr := input.obstruction()
+		if obstr != 0 {
+			fmt.Println("Obstruction detected! Keeping doors open.")
+			timerStop()
+		}
+
+		// Stop button
+		stop := input.stopButton()
+		if stop != 0 {
+			fmt.Println("Emergency stop activated!")
+			timerStop()
+			fsmOnDoorTimeout()
+		}
+		
+		//////////// Test end ///////////////
+
 		// Floor sensor
 		floor := input.floorSensor()
 		if floor != -1 && floor != prevFloor {
 			fsmOnFloorArrival(floor)
 		}
 		prevFloor = floor
+
 
 		// Timer
 		if timerTimedOut() {

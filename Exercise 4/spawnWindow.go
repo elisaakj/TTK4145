@@ -12,17 +12,11 @@ var counter uint64
 var buffer = make([]byte, 16)
 
 func spawnBackupForWindows() {
-	// Command for windows
-
-	/*err := exec.Command("cmd", "/C", "start", "powershell", "go", "run", "spawnWindow.go").Run()
+	err := exec.Command("cmd", "/C", "start", "powershell", "go", "run", "spawnWindow.go").Run()
 
 	if err != nil {
 		log.Fatal(err)
-	}*/
-
-	// Command for linux
-
-	exec.Command("gnome-terminal", "--", "go", "run", "spawnWindow.go").Run()
+	}
 }
 
 func main() {
@@ -60,6 +54,7 @@ func main() {
 		log.Printf("Failed to create UDP connection: %v", err)
 	}
 
+	// primary loop
 	for i := 0; i < 5; i++ {
 
 		if i == 0 && counter == 0 {
