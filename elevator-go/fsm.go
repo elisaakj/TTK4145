@@ -107,6 +107,35 @@ func fsmOnDoorTimeout() {
 	elevatorPrint(elevator)
 }
 
+////////////////////// Testing //////////////////////
+
+func fsmOnStopButton(){
+
+	fmt.Printf("\n\nfsmOnStopButton()\n")
+	elevatorPrint(elevator)
+	elevator.floor = -1
+
+	outputDevice.motorDirection(D_Stop)
+	outputDevice.stopButtonLight(1)
+
+	fmt.Println("\nNew state:")
+	elevatorPrint(elevator)
+}
+
+
+func fsmOnObstruction(){
+
+	fmt.Printf("\n\nfsmOnObstruction()\n")
+	elevatorPrint(elevator)
+
+	outputDevice.doorLight(1)
+
+	fmt.Println("\nNew state:")
+	elevatorPrint(elevator)
+}
+
+////////////////////// Testing end //////////////////////
+
 func boolToInt(b bool) int {
 	if b {
 		return 1
