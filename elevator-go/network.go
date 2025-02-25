@@ -9,17 +9,19 @@ import (
 
 // Constants for the network module
 const (
-	UDP_PORT        = "30000"                 // example port
-	BROADCAST_ADDR  = "255.255.255.255:30000" // example address
+	UDP_PORT        = "30000"
+	BROADCAST_ADDR  = "255.255.255.255:30000"
 	RETRANSMIT_RATE = 500 * time.Millisecond
 	TIMEOUT_LIMIT   = 2 * time.Second
 )
 
 // ElevatorState struct
 type ElevatorState struct {
-	floor    int                       `json:"floor"`
-	dirn     Dirn                      `json:"dirn"`
-	requests [N_FLOORS][N_BUTTONS]bool `json:"requests"`
+	floor     int                       `json:"floor"`
+	dirn      Dirn                      `json:"dirn"`
+	requests  [N_FLOORS][N_BUTTONS]bool `json:"requests"`
+	active    bool
+	behaviour ElevatorBehaviour
 
 	// The ones above are the same as in the Elevator struct minus a few, the ones below is needed for the state
 	// Probably a cleaner way to implement this, since we already have a similar struct
@@ -96,8 +98,15 @@ func retransmitState(elevatorID int, updateChannel chan ElevatorState) {
 }
 
 // sendStateUpdate serializes and broadcasts the state
-func sendStateUpdate(state ElevatorState, addr *net.UDPAddr) {
-	data, err := json.Marshal(state)
+func sendStateUpdate(elevator ElevatorState, addr *net.UDPAddr) {
+	conn, err := net.Dial("udp", BROADCAST_ADDR)
+	if err != nil {
+		fmt.Println("Error connectiong to broadcast:", err)
+		return
+	}
+	defer conn.Close()
+
+	data, err := json.Marshal(elevator)
 	if err != nil {
 		fmt.Println("Error with JSON format:", err)
 		return
