@@ -39,17 +39,17 @@ func (em *ElevatorManager) SyncState() {
 }
 
 func (em *ElevatorManager) DetectFailure() {
-	for id, elevator := range em.Elevators {
-		if time.Since(elevator.lastSeen) > 3*time.Second {
-			fmt.Printf("Elevator %d unresponsive!\n", id)
-			elevator.active = false
-		}
-	}
+    for id, elevator := range em.Elevators {
+        if time.Since(elevator.lastSeen) > 3*time.Second {
+            fmt.Printf("Elevator %d unresponsive!\n", id)
+            elevator.active = false
 
-	// If master dead, elect a new one
-	if !em.Elevators[em.MasterID].active {
-		em.ElectMaster()
-	}
+            // If the failed elevator was the master, elect a new one immediately
+            if id == em.MasterID {
+                em.ElectMaster()
+            }
+        }
+    }
 }
 
 func (em *ElevatorManager) AssignHallCall(floor int, direction string) {

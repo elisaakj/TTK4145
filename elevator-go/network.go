@@ -98,24 +98,30 @@ func retransmitState(elevatorID int, updateChannel chan ElevatorState) {
 }
 
 // sendStateUpdate serializes and broadcasts the state
-func sendStateUpdate(elevator ElevatorState, addr *net.UDPAddr) {
-	conn, err := net.Dial("udp", BROADCAST_ADDR)
-	if err != nil {
-		fmt.Println("Error connectiong to broadcast:", err)
-		return
-	}
-	defer conn.Close()
+func sendStateUpdate(elevator ElevatorState) {
+    addr, err := net.ResolveUDPAddr("udp", BROADCAST_ADDR)
+    if err != nil {
+        fmt.Println("Error resolving UDP address:", err)
+        return
+    }
 
-	data, err := json.Marshal(elevator)
-	if err != nil {
-		fmt.Println("Error with JSON format:", err)
-		return
-	}
+    conn, err := net.DialUDP("udp", nil, addr)
+    if err != nil {
+        fmt.Println("Error connecting to UDP:", err)
+        return
+    }
+    defer conn.Close()
 
-	_, err = udpConn.WriteToUDP(data, addr)
-	if err != nil {
-		fmt.Println("Error sending UDP package", err)
-	}
+    data, err := json.Marshal(elevator)
+    if err != nil {
+        fmt.Println("Error with JSON format:", err)
+        return
+    }
+
+    _, err = conn.Write(data)
+    if err != nil {
+        fmt.Println("Error sending UDP packet:", err)
+    }
 }
 
 // DetectFailures identifies unresponsive elevators
