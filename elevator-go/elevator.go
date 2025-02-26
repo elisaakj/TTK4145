@@ -2,22 +2,25 @@ package main
 
 import (
 	"fmt"
+	"time"
 )
 
 type ElevatorBehaviour int
 
 type ClearRequestVariant int
 
-
 type Elevator struct {
-	floor      int
-	dirn       Dirn
-	requests   [N_FLOORS][N_BUTTONS]bool
-	behaviour  ElevatorBehaviour
-	config     struct {
+	ID        int
+	floor     int
+	dirn      Dirn
+	requests  [N_FLOORS][N_BUTTONS]bool
+	behaviour ElevatorBehaviour
+	config    struct {
 		clearRequestVariant ClearRequestVariant
 		doorOpenDurationS   float64
 	}
+	active   bool
+	lastSeen time.Time
 }
 
 const (
@@ -31,7 +34,7 @@ const (
 	CV_InDirn
 )
 
-// 
+//
 
 const (
 	N_FLOORS  = 4
@@ -90,24 +93,19 @@ func elevatorUninitialized() Elevator {
 	}
 }
 
-
-
-
 ///////////////// REDCLARED //////////////////////
 // const (
-	// 	D_Down Dirn = -1
-	// 	D_Stop Dirn = 0
-	// 	D_Up   Dirn = 1
-	// )
-	
-	// const (
-	// 	B_HallUp Button = iota
-	// 	B_HallDown
-	// 	B_Cab
-	// )
+// 	D_Down Dirn = -1
+// 	D_Stop Dirn = 0
+// 	D_Up   Dirn = 1
+// )
 
+// const (
+// 	B_HallUp Button = iota
+// 	B_HallDown
+// 	B_Cab
+// )
 
-	
 // type Dirn int
 
 // type Button int

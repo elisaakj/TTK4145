@@ -71,5 +71,6 @@ func main() {
 		_, err = bcastConn.Write([]byte(buffer))
 
 		time.Sleep(1 * time.Second)
+
 	}
 }

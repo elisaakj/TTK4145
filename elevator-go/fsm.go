@@ -107,6 +107,28 @@ func fsmOnDoorTimeout() {
 	elevatorPrint(elevator)
 }
 
+// func fsmOnObstruction() {
+// 	fmt.Printf("\n\nfsmOnObstruction()\n")
+// 	elevatorPrint(elevator)
+
+// 	outputDevice.doorLight(1)
+// 	timerStop()
+
+// 	fmt.Println("\nNew state:")
+// 	elevatorPrint(elevator)
+// }
+
+// func fsmOnObstructionCleared() {
+// 	fmt.Printf("\n\nfsmOnObstructionCleared()\n")
+// 	elevatorPrint(elevator)
+
+// 	outputDevice.doorLight(0)
+// 	timerStart(elevator.config.doorOpenDurationS)
+
+// 	fmt.Println("\nNew state:")
+// 	elevatorPrint(elevator)
+// }
+
 func boolToInt(b bool) int {
 	if b {
 		return 1
