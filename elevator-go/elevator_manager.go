@@ -91,6 +91,8 @@ func (em *ElevatorManager) UpdateElevatorState(state ElevatorState) {
 	elevator.requests = state.requests
 	elevator.behaviour = state.behaviour
 	elevator.lastSeen = time.Now()
+	elevator.active = true  // Mark as active again if previously inactive
+
 
 	fmt.Printf("Updated state from elevator %d: %+v\n", state.ID, elevator)
 
