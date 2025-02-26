@@ -23,6 +23,16 @@ func main() {
 	hardwareInit()
 	//  prevObstr := 0
 
+	elev := make(chan ElevatorState)
+	initNetwork(1, elev)
+
+	manager := ElevatorManager{
+		ID:        1,
+		Elevators: make(map[int]*Elevator),
+	}
+
+	manager.ElectMaster()
+
 	if input.floorSensor() == -1 {
 		fsmOnInitBetweenFloors()
 	}

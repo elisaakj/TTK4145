@@ -40,6 +40,7 @@ var udpConn *net.UDPConn
 // initNetwork initializes the UDP connection
 func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
 	// Setting up UDP listener
+	fmt.Println("Hi from initNetwork")
 	addr, _ := net.ResolveUDPAddr("udp", ":"+UDP_PORT)
 	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
@@ -58,6 +59,7 @@ func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
 
 // listenForUpdates recives UDP packets and updates PeerStatus
 func listenForUpdates(updateChannel chan ElevatorState) {
+	fmt.Println("Hi from listenForUpdates")
 	buffer := make([]byte, 1024)
 	for {
 		n, _, err := udpConn.ReadFromUDP(buffer)
@@ -86,65 +88,40 @@ func listenForUpdates(updateChannel chan ElevatorState) {
 
 // retransmitState periodically sends the local elevator's state
 func retransmitState(elevatorID int, updateChannel chan ElevatorState) {
-    addr, err := net.ResolveUDPAddr("udp", BROADCAST_ADDR)
-    if err != nil {
-        fmt.Println("Error resolving UDP address:", err)
-        return
-    }
+	fmt.Println("Hi from retransmitState")
+	addr, err := net.ResolveUDPAddr("udp", BROADCAST_ADDR)
+	if err != nil {
+		fmt.Println("Error resolving UDP address:", err)
+		return
+	}
 
-    conn, err := net.DialUDP("udp", nil, addr)
-    if err != nil {
-        fmt.Println("Error creating UDP connection:", err)
-        return
-    }
-    defer conn.Close() // Close when function exits
+	conn, err := net.DialUDP("udp", nil, addr)
+	if err != nil {
+		fmt.Println("Error creating UDP connection:", err)
+		return
+	}
+	defer conn.Close() // Close when function exits
 
-    ticker := time.NewTicker(RETRANSMIT_RATE)
-    defer ticker.Stop()
+	ticker := time.NewTicker(RETRANSMIT_RATE)
+	defer ticker.Stop()
 
-    for range ticker.C {
-        if state, exists := PeerStatus[elevatorID]; exists {
-            sendStateUpdate(state, conn, addr) // ✅ Use existing connection
-        }
-    }
+	for range ticker.C {
+		if state, exists := PeerStatus[elevatorID]; exists {
+			sendStateUpdate(state, conn, addr) // Use existing connection
+		}
+	}
 }
 
 // sendStateUpdate serializes and broadcasts the state
 func sendStateUpdate(elevator ElevatorState, conn *net.UDPConn, addr *net.UDPAddr) {
-    data, err := json.Marshal(elevator)
-    if err != nil {
-        fmt.Println("Error with JSON format:", err)
-        return
-    }
+	data, err := json.Marshal(elevator)
+	if err != nil {
+		fmt.Println("Error with JSON format:", err)
+		return
+	}
 
-    _, err = conn.WriteToUDP(data, addr)
-    if err != nil {
-        fmt.Println("Error sending UDP packet:", err)
-    }
-}
-
-
-// DetectFailures identifies unresponsive elevators
-func (em *ElevatorManager) DetectFailures() {
-	for id, elevator := range em.Elevators {
-        if time.Since(elevator.lastSeen) > 3*time.Second {
-            fmt.Printf("Elevator %d unresponsive!\n", id)
-            elevator.active = false
-
-            // Redistribute hall calls
-            for f := 0; f < N_FLOORS; f++ {
-                if elevator.requests[f][B_HallUp] {
-                    em.AssignHallCall(f, "up")
-                }
-                if elevator.requests[f][B_HallDown] {
-                    em.AssignHallCall(f, "down")
-                }
-            }
-
-            // If master is down, elect again
-            if id == em.MasterID {
-                em.ElectMaster()
-            }
-        }
-    }
+	_, err = conn.WriteToUDP(data, addr)
+	if err != nil {
+		fmt.Println("Error sending UDP packet:", err)
+	}
 }

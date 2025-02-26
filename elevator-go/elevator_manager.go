@@ -38,13 +38,24 @@ func (em *ElevatorManager) SyncState() {
 	}
 }
 
+// DetectFailure identifies unresponsive elevators
 func (em *ElevatorManager) DetectFailure() {
-    for id, elevator := range em.Elevators {
+	for id, elevator := range em.Elevators {
         if time.Since(elevator.lastSeen) > 3*time.Second {
             fmt.Printf("Elevator %d unresponsive!\n", id)
             elevator.active = false
 
-            // If the failed elevator was the master, elect a new one immediately
+            // Redistribute hall calls
+            for f := 0; f < N_FLOORS; f++ {
+                if elevator.requests[f][B_HallUp] {
+                    em.AssignHallCall(f, "up")
+                }
+                if elevator.requests[f][B_HallDown] {
+                    em.AssignHallCall(f, "down")
+                }
+            }
+
+            // If master is down, elect again
             if id == em.MasterID {
                 em.ElectMaster()
             }
