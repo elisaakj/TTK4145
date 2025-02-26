@@ -9,7 +9,7 @@ import (
 
 // Constants for the network module
 const (
-	UDP_PORT        = "30000"
+	//UDP_PORT        = "30000"
 	BROADCAST_ADDR  = "255.255.255.255:30000"
 	RETRANSMIT_RATE = 500 * time.Millisecond
 	TIMEOUT_LIMIT   = 2 * time.Second
@@ -39,21 +39,29 @@ var udpConn *net.UDPConn
 
 // initNetwork initializes the UDP connection
 func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
-	// Setting up UDP listener
-	addr, _ := net.ResolveUDPAddr("udp", ":"+UDP_PORT)
-	conn, err := net.ListenUDP("udp", addr)
-	if err != nil {
-		fmt.Println("Error starting UDP server", err)
-		return
-	}
-	udpConn = conn
+    // Use a unique port for each elevator based on its ID
+    localPort := fmt.Sprintf("30%03d", elevatorID)  // e.g., 30001, 30002, 30003
 
-	// Listening for messages
-	go listenForUpdates(updateChannel)
+    addr, err := net.ResolveUDPAddr("udp", ":"+localPort)
+    if err != nil {
+        fmt.Println("Error resolving UDP address:", err)
+        return
+    }
 
-	// Periodic retransmission of state updates
-	go retransmitState(elevatorID, updateChannel)
+    conn, err := net.ListenUDP("udp", addr)
+    if err != nil {
+        fmt.Println("Error starting UDP server on port", localPort, ":", err)
+        return
+    }
+    udpConn = conn
 
+    fmt.Println("Elevator", elevatorID, "listening on UDP port", localPort)
+
+    // Listening for messages
+    go listenForUpdates(updateChannel)
+
+    // Periodic retransmission of state updates
+    go retransmitState(elevatorID, updateChannel)
 }
 
 // listenForUpdates recives UDP packets and updates PeerStatus
