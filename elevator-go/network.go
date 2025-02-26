@@ -94,25 +94,28 @@ func listenForUpdates(updateChannel chan ElevatorState) {
 
 // retransmitState periodically sends the local elevator's state
 func retransmitState(elevatorID int, updateChannel chan ElevatorState) {
-    addr, err := net.ResolveUDPAddr("udp", BROADCAST_ADDR)
-    if err != nil {
-        fmt.Println("Error resolving UDP address:", err)
-        return
-    }
+    ticker := time.NewTicker(RETRANSMIT_RATE)
+    defer ticker.Stop()
 
-    conn, err := net.DialUDP("udp", nil, addr)
+	conn, err := net.DialUDP("udp", nil, nil) // ✅ Open UDP connection for sending
     if err != nil {
         fmt.Println("Error creating UDP connection:", err)
         return
     }
-    defer conn.Close() // Close when function exits
-
-    ticker := time.NewTicker(RETRANSMIT_RATE)
-    defer ticker.Stop()
+    defer conn.Close()
 
     for range ticker.C {
-        if state, exists := PeerStatus[elevatorID]; exists {
-            sendStateUpdate(state, conn, addr) // ✅ Use existing connection
+        for peerID, state := range PeerStatus {
+            if peerID != elevatorID { // Don't send to itself
+                peerPort := fmt.Sprintf("30%03d", peerID)  // Get peer's listening port (e.g., 30002)
+                addr, err := net.ResolveUDPAddr("udp", "255.255.255.255:"+peerPort)
+                if err != nil {
+                    fmt.Println("Error resolving UDP address:", err)
+                    continue
+                }
+                
+                sendStateUpdate(state, conn, addr)
+            }
         }
     }
 }
