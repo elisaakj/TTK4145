@@ -10,7 +10,7 @@ import (
 // Constants for the network module
 const (
 	//UDP_PORT        = "30000"
-	BROADCAST_ADDR  = "255.255.255.255:30000"
+	//BROADCAST_ADDR  = "255.255.255.255:30000"
 	RETRANSMIT_RATE = 500 * time.Millisecond
 	TIMEOUT_LIMIT   = 2 * time.Second
 )
@@ -97,7 +97,7 @@ func retransmitState(elevatorID int, updateChannel chan ElevatorState) {
     ticker := time.NewTicker(RETRANSMIT_RATE)
     defer ticker.Stop()
 
-	conn, err := net.DialUDP("udp", nil, nil) // ✅ Open UDP connection for sending
+	conn, err := net.DialUDP("udp", nil, nil) // Open UDP connection for sending
     if err != nil {
         fmt.Println("Error creating UDP connection:", err)
         return
