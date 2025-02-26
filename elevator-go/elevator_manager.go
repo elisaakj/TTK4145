@@ -86,9 +86,9 @@ func (em *ElevatorManager) UpdateElevatorState(state ElevatorState) {
 		em.Elevators[state.ID] = elevator
 	}
 
-	elevator.floor = state.floor
-	elevator.dirn = state.dirn
-	elevator.requests = state.requests
+	elevator.floor = state.Floor
+	elevator.dirn = state.Dirn
+	elevator.requests = state.Requests
 	elevator.behaviour = state.behaviour
 	elevator.lastSeen = time.Now()
 	elevator.active = true  // Mark as active again if previously inactive

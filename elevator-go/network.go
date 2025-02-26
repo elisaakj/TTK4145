@@ -17,9 +17,9 @@ const (
 
 // ElevatorState struct
 type ElevatorState struct {
-	floor     int                       `json:"floor"`
-	dirn      Dirn                      `json:"dirn"`
-	requests  [N_FLOORS][N_BUTTONS]bool `json:"requests"`
+	Floor     int                       `json:"floor"`
+	Dirn      Dirn                      `json:"dirn"`
+    Requests  [N_FLOORS][N_BUTTONS]bool `json:"requests"`
 	active    bool
 	behaviour ElevatorBehaviour
 
