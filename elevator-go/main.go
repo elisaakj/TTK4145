@@ -12,40 +12,15 @@ import (
 	// "./elevator_io_device.go"
 	// "fsm"
 	// "timer"
-	"os"
-	"strconv"
 )
 
 func main() {
-	//  Get elevator ID from command-line argument
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: ./elevator <ID>")
-		return
-	}
-
-	elevatorID, err := strconv.Atoi(os.Args[1])
-	if err != nil || elevatorID <= 0 {
-		fmt.Println("Invalid elevator ID. Please provide a positive number.")
-		return
-	}
-
-	fmt.Printf("Started elevator %d\n", elevatorID)
+	fmt.Println("Started!")
 
 	inputPollRate := 25 * time.Millisecond
 	input := elevioGetInputDevice()
 
 	hardwareInit()
-
-	// Initialize the network with the correct elevator ID
-	updateChannel := make(chan ElevatorState)
-	initNetwork(elevatorID, updateChannel)
-
-	// Initialize the elevator manager with a unique ID
-	manager := ElevatorManager{
-		ID:        elevatorID,
-		Elevators: make(map[int]*Elevator),
-	}
-	manager.ElectMaster()
 
 	if input.floorSensor() == -1 {
 		fsmOnInitBetweenFloors()
@@ -70,19 +45,6 @@ func main() {
 			}
 		}
 
-		// Obstruction sensor
-		/*
-			obstr := input.obstruction()
-			if obstr != 0 && prevObstr == 0 { // Trigger only when obstruction starts
-				fmt.Println("Obstruction detected! Keeping doors open.")
-				fsmOnObstruction()
-			} else if obstr == 0 && prevObstr != 0 { // Detect when obstruction is cleared
-				fmt.Println("Obstruction cleared. Resuming operation.")
-				fsmOnObstructionCleared()
-			}
-			prevObstr = obstr
-		*/
-
 		// Floor sensor
 		floor := input.floorSensor()
 		if floor != -1 && floor != prevFloor {
@@ -99,3 +61,38 @@ func main() {
 		time.Sleep(inputPollRate)
 	}
 }
+
+/*
+
+func main() {
+	// Initialize elevator manager
+	elevatorManager := ElevatorManager{
+		ID:        1, // Change this per elevator
+		Elevators: make(map[int]*Elevator),
+	}
+
+	// Start network listener
+	go network.ListenForUpdates(&elevatorManager)
+
+	// Start periodic state broadcast
+	myElevator := network.ElevatorState{
+		ID:        elevatorManager.ID,
+		Floor:     0,
+		Direction: "idle",
+		Active:    true,
+	}
+	go network.retransmitState(myElevator)
+
+	// Main loop to check for failures
+	for {
+		elevatorManager.DetectFailure()
+		time.Sleep(2 * time.Second)
+	}
+}
+
+go run elevator.go 1  # Starts the first elevator (ID=1)
+go run elevator.go 2  # Starts the second elevator (ID=2)
+go run elevator.go 3  # Starts the third elevator (ID=3)
+
+
+*/
