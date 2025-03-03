@@ -88,6 +88,11 @@ func fsmOnDoorTimeout() {
 	fmt.Println("\n\nfsmOnDoorTimeout()")
 	elevatorPrint(elevator)
 
+	if hardwareGetObstructionSignal() != 0 {
+		timerStart(elevator.config.doorOpenDurationS)
+		return
+	}
+
 	if elevator.behaviour == EB_DoorOpen {
 		pair := requestsChooseDirection(elevator)
 		elevator.dirn = pair.dirn
@@ -107,27 +112,31 @@ func fsmOnDoorTimeout() {
 	elevatorPrint(elevator)
 }
 
-// func fsmOnObstruction() {
-// 	fmt.Printf("\n\nfsmOnObstruction()\n")
-// 	elevatorPrint(elevator)
+func fsmOnObstruction() {
+	fmt.Println("\n\nfsmOnObstruction()")
+	elevatorPrint(elevator)
 
-// 	outputDevice.doorLight(1)
-// 	timerStop()
+	if elevator.behaviour == EB_DoorOpen {
+		outputDevice.doorLight(1) // Keep door open
+		timerStop()               // Stop the timer while obstructed
+	}
 
-// 	fmt.Println("\nNew state:")
-// 	elevatorPrint(elevator)
-// }
+	fmt.Println("\nNew state:")
+	elevatorPrint(elevator)
+}
 
-// func fsmOnObstructionCleared() {
-// 	fmt.Printf("\n\nfsmOnObstructionCleared()\n")
-// 	elevatorPrint(elevator)
+func fsmOnObstructionCleared() {
+	fmt.Println("\n\nfsmOnObstructionCleared()")
+	elevatorPrint(elevator)
 
-// 	outputDevice.doorLight(0)
-// 	timerStart(elevator.config.doorOpenDurationS)
+	if elevator.behaviour == EB_DoorOpen {
+		outputDevice.doorLight(1)                     // Keep door open
+		timerStart(elevator.config.doorOpenDurationS) // Restart door timer
+	}
 
-// 	fmt.Println("\nNew state:")
-// 	elevatorPrint(elevator)
-// }
+	fmt.Println("\nNew state:")
+	elevatorPrint(elevator)
+}
 
 func boolToInt(b bool) int {
 	if b {

@@ -32,6 +32,7 @@ func main() {
 	}
 
 	prevFloor := -1
+	prevObstr := 0
 
 	for {
 		// Request button
@@ -44,6 +45,20 @@ func main() {
 				prevRequests[f][b] = v
 			}
 		}
+
+		// Obstruction
+
+		obstr := input.obstruction()
+		if obstr != 0 && prevObstr == 0 {
+			// If obstruction is detected and wasn't detected before
+			fmt.Println("Obstruction detected! Keeping doors open.")
+			fsmOnObstruction()
+		} else if obstr == 0 && prevObstr != 0 {
+			// If obstruction was cleared
+			fmt.Println("Obstruction cleared. Resuming operation.")
+			fsmOnObstructionCleared()
+		}
+		prevObstr = obstr // Update previous obstruction state
 
 		// Floor sensor
 		floor := input.floorSensor()
