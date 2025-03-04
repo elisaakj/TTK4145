@@ -9,10 +9,11 @@ import (
 
 // Constants for the network module
 const (
-	//UDP_PORT        = "30000"
-	//BROADCAST_ADDR  = "255.255.255.255:30000"
+	UDP_PORT        = "30000"
+	BROADCAST_ADDR  = "255.255.255.255:30000"
 	RETRANSMIT_RATE = 500 * time.Millisecond
 	TIMEOUT_LIMIT   = 2 * time.Second
+	HEARTBEAT_RATE  = 500 * time.Millisecond
 )
 
 // ElevatorState struct
@@ -29,13 +30,16 @@ type ElevatorState struct {
 	ID          int       `json:"id"`
 	IsMaster    bool      `json:"is_master"`
 	LastUpdated time.Time `json:"-"`
+	Heartbeat   time.Time `json:"-"`
 }
 
-// PeerStaus tracks last update time for each elevator
-var PeerStatus = make(map[int]ElevatorState)
+var (
+	PeerStatus = make(map[int]ElevatorState) // PeerStaus tracks last update time for each elevator
+	udpConn    *net.UDPConn                  // UDP socket
+)
 
-// UDP socket
-var udpConn *net.UDPConn
+// PeerStatus as sync.Map instead??
+// sateUpdates as a chan with the stateUpdates
 
 // initNetwork initializes the UDP connection
 func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
@@ -43,25 +47,17 @@ func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
 	localPort := fmt.Sprintf("30%03d", elevatorID) // e.g., 30001, 30002, 30003
 
 	addr, err := net.ResolveUDPAddr("udp", ":"+localPort)
-	if err != nil {
-		fmt.Println("Error resolving UDP address:", err)
-		return
-	}
-
 	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
-		fmt.Println("Error starting UDP server on port", localPort, ":", err)
+		fmt.Println("Error resolving UDP address:", err)
 		return
 	}
 	udpConn = conn
 
 	fmt.Println("Elevator", elevatorID, "listening on UDP port", localPort)
 
-	// Listening for messages
-	go listenForUpdates(updateChannel)
-
-	// Periodic retransmission of state updates
-	go retransmitState(elevatorID, updateChannel)
+	go listenForUpdates(updateChannel)            // Listening for messages
+	go retransmitState(elevatorID, updateChannel) // Periodic retransmission of state updates
 }
 
 // listenForUpdates recives UDP packets and updates PeerStatus
@@ -100,35 +96,42 @@ func retransmitState(elevatorID int, updateChannel chan ElevatorState) {
 	for range ticker.C {
 		for peerID, state := range PeerStatus {
 			if peerID != elevatorID { // Don't send to itself
-				peerPort := fmt.Sprintf("30%03d", peerID) // ✅ Get peer's listening port (e.g., 30002)
+				peerPort := fmt.Sprintf("30%03d", peerID) // Get peer's listening port (e.g., 30002)
 				addr, err := net.ResolveUDPAddr("udp", "255.255.255.255:"+peerPort)
 				if err != nil {
 					fmt.Println("Error resolving UDP address:", err)
 					continue
 				}
 
-				conn, err := net.DialUDP("udp", nil, addr) // ✅ Correctly set remote address
+				conn, err := net.DialUDP("udp", nil, addr) // Correctly set remote address
 				if err != nil {
 					fmt.Println("Error creating UDP connection:", err)
 					continue
 				}
 				defer conn.Close()
 
-				sendStateUpdate(state, conn, addr) // ✅ Now properly sends data
+				sendStateUpdate(state, BROADCAST_ADDR) // Now properly sends data
 			}
 		}
 	}
 }
 
 // sendStateUpdate serializes and broadcasts the state
-func sendStateUpdate(elevator ElevatorState, conn *net.UDPConn, addr *net.UDPAddr) {
+func sendStateUpdate(elevator ElevatorState, addr *net.UDPAddr) {
+	conn, err := net.Dial("udp", BROADCAST_ADDR)
+	if err != nil {
+		fmt.Println("Error connecting to broadcast:", err)
+		return
+	}
+	defer conn.Close()
+
 	data, err := json.Marshal(elevator)
 	if err != nil {
 		fmt.Println("Error with JSON format:", err)
 		return
 	}
 
-	_, err = conn.WriteToUDP(data, addr)
+	_, err = udpConn.WriteToUDP(data, addr)
 	if err != nil {
 		fmt.Println("Error sending UDP packet:", err)
 	}
@@ -158,3 +161,5 @@ func (em *ElevatorManager) DetectFailures() {
 		}
 	}
 }
+
+// shouldn't really to the redistribute and electing in the network-module as done above
