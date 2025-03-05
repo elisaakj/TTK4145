@@ -14,6 +14,8 @@ type ElevatorManager struct {
 	StateUpdated bool
 }
 
+// ones again almost the same struct
+
 func (em *ElevatorManager) ElectMaster() {
 	minID := em.ID
 	for id, elevator := range em.Elevators {
@@ -37,6 +39,8 @@ func (em *ElevatorManager) SyncState() {
 		}
 	}
 }
+
+// should probably not do like this, should detect failurs in network, and then elect and redistribute here
 
 // DetectFailure identifies unresponsive elevators
 func (em *ElevatorManager) DetectFailure() {
