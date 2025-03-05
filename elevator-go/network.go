@@ -163,7 +163,7 @@ func detectFailures() {
 	}
 }
 
-// shouldn't really to the redistribute and electing in the network-module as done before here
+// shouldn't really to the redistribute and electing in the network-module as done before above here
 
 func getPeerStatus(id int) (ElevatorState, bool) {
 	val, ok := PeerStatus.Load(id)
@@ -172,6 +172,3 @@ func getPeerStatus(id int) (ElevatorState, bool) {
 	}
 	return ElevatorState{}, false
 }
-
-// FUNCTIONS FOR TESTING
-

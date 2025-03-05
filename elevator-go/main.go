@@ -1,21 +1,34 @@
 package main
 
 import (
-
-	// "Network-go/network/bcast"
-	// "Network-go/network/localip"
-	// "Network-go/network/peers"
-
 	"fmt"
-	//"net"
+	"os"
 	"time"
-	// "./elevator_io_device.go"
-	// "fsm"
-	// "timer"
 )
 
 func main() {
 	fmt.Println("Started!")
+
+	// Init network and elevator
+
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: go run main.go <elevator_id>")
+		return
+	}
+
+	elevatorID := 0
+	fmt.Sscanf(os.Args[1], "&d", elevatorID)
+
+	updateChannel := make(chan ElevatorState)
+	initNetwork(elevatorID, updateChannel)
+
+	elevator := Elevator{
+		ID:        elevatorID,
+		floor:     0,
+		dirn:      D_Stop,
+		behaviour: EB_Idle,
+		active:    true,
+	}
 
 	inputPollRate := 25 * time.Millisecond
 	input := elevioGetInputDevice()
@@ -34,47 +47,68 @@ func main() {
 	prevFloor := -1
 	prevObstr := 0
 
-	for {
-		// Request button
-		for f := 0; f < N_FLOORS; f++ {
-			for b := 0; b < N_BUTTONS; b++ {
-				v := input.requestButton(f, Button(b))
-				if v != 0 && v != prevRequests[f][b] {
-					fsmOnRequestButtonPress(f, Button(b))
+	go func() {
+		for {
+			select {
+			case newState := <-updateChannel:
+				// Handle received state updates
+				fmt.Printf("Elevator %d received update: %+v\n", elevatorID, newState)
+				if newState.ID != elevatorID {
+					fmt.Printf("Updating peer elevator %d state...\n", newState.ID)
 				}
-				prevRequests[f][b] = v
+			default:
+				// Request button handling
+				for f := 0; f < N_FLOORS; f++ {
+					for b := 0; b < N_BUTTONS; b++ {
+						v := input.requestButton(f, Button(b))
+						if v != 0 && v != prevRequests[f][b] {
+							fsmOnRequestButtonPress(f, Button(b))
+						}
+						prevRequests[f][b] = v
+					}
+				}
+
+				// Obstruction handling
+				obstr := input.obstruction()
+				if obstr != 0 && prevObstr == 0 {
+					fmt.Println("Obstruction detected! Keeping doors open.")
+					fsmOnObstruction()
+				} else if obstr == 0 && prevObstr != 0 {
+					fmt.Println("Obstruction cleared. Resuming operation.")
+					fsmOnObstructionCleared()
+				}
+				prevObstr = obstr
+
+				// Floor sensor handling
+				floor := input.floorSensor()
+				if floor != -1 && floor != prevFloor {
+					fsmOnFloorArrival(floor)
+				}
+				prevFloor = floor
+
+				// Timer handling
+				if timerTimedOut() {
+					timerStop()
+					fsmOnDoorTimeout()
+				}
+
+				// Send periodic state updates
+				state := ElevatorState{
+					ID:        elevatorID,
+					floor:     elevator.floor,
+					dirn:      elevator.dirn,
+					behaviour: elevator.behaviour,
+					active:    true,
+				}
+				sendStateUpdate(state, nil)
+
+				time.Sleep(inputPollRate)
 			}
 		}
+	}()
 
-		// Obstruction
-
-		obstr := input.obstruction()
-		if obstr != 0 && prevObstr == 0 {
-			// If obstruction is detected and wasn't detected before
-			fmt.Println("Obstruction detected! Keeping doors open.")
-			fsmOnObstruction()
-		} else if obstr == 0 && prevObstr != 0 {
-			// If obstruction was cleared
-			fmt.Println("Obstruction cleared. Resuming operation.")
-			fsmOnObstructionCleared()
-		}
-		prevObstr = obstr // Update previous obstruction state
-
-		// Floor sensor
-		floor := input.floorSensor()
-		if floor != -1 && floor != prevFloor {
-			fsmOnFloorArrival(floor)
-		}
-		prevFloor = floor
-
-		// Timer
-		if timerTimedOut() {
-			timerStop()
-			fsmOnDoorTimeout()
-		}
-
-		time.Sleep(inputPollRate)
-	}
+	// Keep the program running
+	select {}
 }
 
 /*
