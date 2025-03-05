@@ -17,36 +17,14 @@ const (
 	HEARTBEAT_RATE  = 500 * time.Millisecond
 )
 
-// ElevatorState struct
-type ElevatorState struct {
-	floor     int                       `json:"floor"`
-	dirn      MotorDirection            `json:"dirn"`
-	requests  [N_FLOORS][N_BUTTONS]bool `json:"requests"`
-	Dirn      MotorDirection            `json:"dirn"`
-	Requests  [N_FLOORS][N_BUTTONS]bool `json:"requests"`
-	active    bool
-	state ElevState
-
-	// The ones above are the same as in the Elevator struct minus a few, the ones below is needed for the state
-	// Probably a cleaner way to implement this, since we already have a similar struct
-
-	ID          int       `json:"id"`
-	IsMaster    bool      `json:"is_master"`
-	LastUpdated time.Time `json:"-"`
-	Heartbeat   time.Time `json:"-"`
-}
-
 var (
-	PeerStatus   sync.Map // PeerStaus tracks last update time for each elevator
-	stateUpdates = make(chan ElevatorState)
+	peerStatus   sync.Map // peerStatus tracks last update time for each elevator
+	stateUpdates = make(chan Elevator)
 	udpConn      *net.UDPConn // UDP socket
 )
 
-// PeerStatus as sync.Map instead??
-// sateUpdates as a chan with the stateUpdates
-
 // initNetwork initializes the UDP connection
-func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
+func initNetwork(elevatorID int, updateChannel chan Elevator) {
 	addr, _ := net.ResolveUDPAddr("udp", ":"+UDP_PORT)
 	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
@@ -55,7 +33,7 @@ func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
 	}
 	udpConn = conn
 
-	go listenForUpdates(updateChannel) // Listening for messages
+	go listenForUpdates() // Listening for messages
 	go retransmitState(elevatorID)     // Periodic retransmission of state updates
 	go sendHeartbeat(elevatorID)
 	go detectFailures()
@@ -63,7 +41,7 @@ func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
 }
 
 // listenForUpdates recives UDP packets and updates PeerStatus
-func listenForUpdates(updateChannel chan ElevatorState) {
+func listenForUpdates() {
 	buffer := make([]byte, 1024)
 	for {
 		n, _, err := udpConn.ReadFromUDP(buffer)
@@ -72,7 +50,7 @@ func listenForUpdates(updateChannel chan ElevatorState) {
 			continue
 		}
 
-		var receivedState ElevatorState
+		var receivedState Elevator
 
 		// check if state recived is valid
 		err = json.Unmarshal(buffer[:n], &receivedState)
@@ -81,14 +59,14 @@ func listenForUpdates(updateChannel chan ElevatorState) {
 			continue
 		}
 
-		receivedState.LastUpdated = time.Now()
+		receivedState.lastSeen = time.Now()
 		stateUpdates <- receivedState
 	}
 }
 
-func processStateUpdates(updateChannel chan ElevatorState) {
+func processStateUpdates(updateChannel chan Elevator) {
 	for state := range stateUpdates {
-		PeerStatus.Store(state.ID, state)
+		peerStatus.Store(state.ID, state)
 		updateChannel <- state
 	}
 }
@@ -107,7 +85,7 @@ func retransmitState(elevatorID int) {
 }
 
 // sendStateUpdate serializes and broadcasts the state
-func sendStateUpdate(elevator ElevatorState, addr *net.UDPAddr) {
+func sendStateUpdate(elevator Elevator, addr *net.UDPAddr) {
 	conn, err := net.Dial("udp", BROADCAST_ADDR)
 	if err != nil {
 		fmt.Println("Error connecting to broadcast:", err)
@@ -133,8 +111,8 @@ func sendHeartbeat(elevatorID int) {
 
 	for range ticker.C {
 		if state, exist := getPeerStatus(elevatorID); exist {
-			state.Heartbeat = time.Now()
-			PeerStatus.Store(elevatorID, state)
+			state.heartbeat = time.Now()
+			peerStatus.Store(elevatorID, state)
 		}
 	}
 }
@@ -144,22 +122,22 @@ func detectFailures() {
 	for {
 		time.Sleep(TIMEOUT_LIMIT)
 		now := time.Now()
-		PeerStatus.Range(func(key, value interface{}) bool {
+		peerStatus.Range(func(key, value interface{}) bool {
 			id := key.(int)
-			state := value.(ElevatorState)
-			if now.Sub(state.Heartbeat) > TIMEOUT_LIMIT {
+			state := value.(Elevator)
+			if now.Sub(state.heartbeat) > TIMEOUT_LIMIT {
 				fmt.Printf("Elevator %d is unresponsive\n", id)
-				PeerStatus.Delete(id)
+				peerStatus.Delete(id)
 			}
 			return true
 		})
 	}
 }
 
-func getPeerStatus(id int) (ElevatorState, bool) {
-	val, ok := PeerStatus.Load(id)
+func getPeerStatus(id int) (Elevator, bool) {
+	val, ok := peerStatus.Load(id)
 	if ok {
-		return val.(ElevatorState), true
+		return val.(Elevator), true
 	}
-	return ElevatorState{}, false
+	return Elevator{}, false
 }

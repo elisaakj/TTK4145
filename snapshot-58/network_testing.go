@@ -10,7 +10,7 @@ import (
 func TestNetworkSendReceive(t *testing.T) {
 	// Simulate an elevator sending a state update
 	elevatorID := 1
-	testState := ElevatorState{
+	testState := Elevator{
 		ID:        elevatorID,
 		floor:     2,
 		dirn:      DIRN_UP,
@@ -30,11 +30,11 @@ func TestNetworkSendReceive(t *testing.T) {
 	go func() {
 		buffer := make([]byte, 1024)
 		n, _, _ := conn.ReadFromUDP(buffer)
-		var receivedState ElevatorState
+		var receivedState Elevator
 		json.Unmarshal(buffer[:n], &receivedState)
 
 		// Store in sync.Map
-		PeerStatus.Store(receivedState.ID, receivedState)
+		peerStatus.Store(receivedState.ID, receivedState)
 	}()
 
 	// Send a test state update
@@ -60,14 +60,14 @@ func TestConcurrentElevatorUpdates(t *testing.T) {
 	// Simulate multiple elevators sending state updates
 	for i := 1; i <= elevatorCount; i++ {
 		go func(id int) {
-			state := ElevatorState{
+			state := Elevator{
 				ID:        id,
 				floor:     id, // Different floor for each
 				dirn:      DIRN_STOP,
 				active:    true,
 				state: ELEVSTATE_IDLE,
 			}
-			PeerStatus.Store(id, state)
+			peerStatus.Store(id, state)
 		}(i)
 	}
 
@@ -85,14 +85,14 @@ func TestConcurrentElevatorUpdates(t *testing.T) {
 
 func TestFailureDetection(t *testing.T) {
 	elevatorID := 3
-	state := ElevatorState{
+	state := Elevator{
 		ID:        elevatorID,
 		floor:     2,
 		active:    true,
-		Heartbeat: time.Now().Add(-3 * TIMEOUT_LIMIT), // Simulate expired heartbeat
+		heartbeat: time.Now().Add(-3 * TIMEOUT_LIMIT), // Simulate expired heartbeat
 	}
 
-	PeerStatus.Store(elevatorID, state)
+	peerStatus.Store(elevatorID, state)
 
 	// Run failure detection once
 	detectFailures()

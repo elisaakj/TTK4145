@@ -6,17 +6,7 @@ import (
 	"time"
 )
 
-type ElevatorManager struct {
-	ID           int
-	MasterID     int
-	Elevators    map[int]*Elevator
-	IsMaster     bool
-	StateUpdated bool
-}
-
-// once again almost the same struct
-
-func (em *ElevatorManager) ElectMaster() {
+func (em *Elevator) ElectMaster() {
 	minID := em.ID
 	for id, elevator := range em.Elevators {
 		if elevator.active && id < minID {
@@ -24,16 +14,16 @@ func (em *ElevatorManager) ElectMaster() {
 		}
 	}
 	em.MasterID = minID
-	em.IsMaster = (em.ID == em.MasterID)
+	em.isMaster = (em.ID == em.MasterID)
 
-	fmt.Printf("New master elected: %d (self: %t)\n", em.MasterID, em.IsMaster)
+	fmt.Printf("New master elected: %d (self: %t)\n", em.MasterID, em.isMaster)
 }
 
-func (em *ElevatorManager) SyncState() {
-	if em.IsMaster {
+func (em *Elevator) SyncState() {
+	if em.isMaster {
 		for id, elevator := range em.Elevators {
 			if id != em.ID && elevator.active {
-				em.StateUpdated = true
+				em.stateUpdated = true
 				fmt.Printf("Syncing state to slave: %d\n", id)
 			}
 		}
@@ -43,7 +33,7 @@ func (em *ElevatorManager) SyncState() {
 // should probably not do like this, should detect failurs in network, and then elect and redistribute here
 
 // DetectFailure identifies unresponsive elevators
-func (em *ElevatorManager) DetectFailure() {
+func (em *Elevator) DetectFailure() {
 	for id, elevator := range em.Elevators {
         if time.Since(elevator.lastSeen) > 3*time.Second {
             fmt.Printf("Elevator %d unresponsive!\n", id)
@@ -52,10 +42,10 @@ func (em *ElevatorManager) DetectFailure() {
             // Redistribute hall calls
             for f := 0; f < N_FLOORS; f++ {
                 if elevator.requests[f][BUTTON_HALL_UP] {
-                    em.AssignHallCall(f, "up")
+                    em.assignHallCall(f)
                 }
                 if elevator.requests[f][BUTTON_HALL_DOWN] {
-                    em.AssignHallCall(f, "down")
+                    em.assignHallCall(f)
                 }
             }
 
@@ -67,8 +57,8 @@ func (em *ElevatorManager) DetectFailure() {
     }
 }
 
-func (em *ElevatorManager) AssignHallCall(floor int, direction string) {
-	if !em.IsMaster {
+func (em *Elevator) assignHallCall(floor int) {
+	if !em.isMaster {
 		return
 	}
 
@@ -94,7 +84,7 @@ func (em *ElevatorManager) AssignHallCall(floor int, direction string) {
 	}
 }
 
-func (em *ElevatorManager) UpdateElevatorState(state ElevatorState) {
+func (em *Elevator) UpdateElevatorState(state Elevator) {
 	elevator, exist := em.Elevators[state.ID]
 	if !exist {
 		elevator = &Elevator{}
