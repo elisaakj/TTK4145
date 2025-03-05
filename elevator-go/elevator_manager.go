@@ -14,7 +14,7 @@ type ElevatorManager struct {
 	StateUpdated bool
 }
 
-// ones again almost the same struct
+// once again almost the same struct
 
 func (em *ElevatorManager) ElectMaster() {
 	minID := em.ID
@@ -45,26 +45,26 @@ func (em *ElevatorManager) SyncState() {
 // DetectFailure identifies unresponsive elevators
 func (em *ElevatorManager) DetectFailure() {
 	for id, elevator := range em.Elevators {
-        if time.Since(elevator.lastSeen) > 3*time.Second {
-            fmt.Printf("Elevator %d unresponsive!\n", id)
-            elevator.active = false
+		if time.Since(elevator.lastSeen) > 3*time.Second {
+			fmt.Printf("Elevator %d unresponsive!\n", id)
+			elevator.active = false
 
-            // Redistribute hall calls
-            for f := 0; f < N_FLOORS; f++ {
-                if elevator.requests[f][B_HallUp] {
-                    em.AssignHallCall(f, "up")
-                }
-                if elevator.requests[f][B_HallDown] {
-                    em.AssignHallCall(f, "down")
-                }
-            }
+			// Redistribute hall calls
+			for f := 0; f < N_FLOORS; f++ {
+				if elevator.requests[f][B_HallUp] {
+					em.AssignHallCall(f, "up")
+				}
+				if elevator.requests[f][B_HallDown] {
+					em.AssignHallCall(f, "down")
+				}
+			}
 
-            // If master is down, elect again
-            if id == em.MasterID {
-                em.ElectMaster()
-            }
-        }
-    }
+			// If master is down, elect again
+			if id == em.MasterID {
+				em.ElectMaster()
+			}
+		}
+	}
 }
 
 func (em *ElevatorManager) AssignHallCall(floor int, direction string) {
@@ -106,8 +106,7 @@ func (em *ElevatorManager) UpdateElevatorState(state ElevatorState) {
 	elevator.requests = state.requests
 	elevator.behaviour = state.behaviour
 	elevator.lastSeen = time.Now()
-	elevator.active = true  // Mark as active again if previously inactive
-
+	elevator.active = true // Mark as active again if previously inactive
 
 	fmt.Printf("Updated state from elevator %d: %+v\n", state.ID, elevator)
 

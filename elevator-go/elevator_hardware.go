@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	sock       net.Conn
-	sockMutex  sync.Mutex
+	sock      net.Conn
+	sockMutex sync.Mutex
 )
 
 // const (
@@ -83,7 +83,7 @@ func hardwareGetButtonSignal(button Button, floor int) int {
 
 func hardwareGetFloorSensorSignal() int {
 
-	if sock == nil  {
+	if sock == nil {
 		log.Fatal("Socket is nil. Ensure it is initialized before usage")
 	}
 

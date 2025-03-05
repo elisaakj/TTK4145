@@ -10,8 +10,8 @@ import (
 
 // Constants for the network module
 const (
-	UDP_PORT        = "20015"
-	BROADCAST_ADDR  = "255.255.255.255:20015"
+	UDP_PORT        = "15657"
+	BROADCAST_ADDR  = "255.255.255.255:15657"
 	RETRANSMIT_RATE = 500 * time.Millisecond
 	TIMEOUT_LIMIT   = 2 * time.Second
 	HEARTBEAT_RATE  = 500 * time.Millisecond
@@ -20,13 +20,13 @@ const (
 // ElevatorState struct
 type ElevatorState struct {
 	floor     int                       `json:"floor"`
-	dirn      Dirn                      `json:"dirn"`
+	dirn      Dirn            `json:"dirn"`
 	requests  [N_FLOORS][N_BUTTONS]bool `json:"requests"`
-	Floor     int                       `json:"floor"`
-	Dirn      Dirn                      `json:"dirn"`
+	Dirn      Dirn            `json:"dirn"`
 	Requests  [N_FLOORS][N_BUTTONS]bool `json:"requests"`
 	active    bool
 	behaviour ElevatorBehaviour
+	
 
 	// The ones above are the same as in the Elevator struct minus a few, the ones below is needed for the state
 	// Probably a cleaner way to implement this, since we already have a similar struct
@@ -52,12 +52,6 @@ func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
 	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
 		fmt.Println("Error starting UDP server", err)
-		return
-	}
-	udpConn = conn
-
-	if err != nil {
-		fmt.Println("Error resolving UDP address:", err)
 		return
 	}
 	udpConn = conn
@@ -130,7 +124,7 @@ func sendStateUpdate(elevator ElevatorState, addr *net.UDPAddr) {
 
 	_, err = udpConn.WriteToUDP(data, addr)
 	if err != nil {
-		fmt.Println("Error sending UDP packet:", err)
+		fmt.Println("Error sending UDP packet:", err) // error
 	}
 }
 
@@ -162,8 +156,6 @@ func detectFailures() {
 		})
 	}
 }
-
-// shouldn't really to the redistribute and electing in the network-module as done before above here
 
 func getPeerStatus(id int) (ElevatorState, bool) {
 	val, ok := PeerStatus.Load(id)
