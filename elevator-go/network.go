@@ -13,13 +13,20 @@ const (
 	BROADCAST_ADDR  = "255.255.255.255:30000"
 	RETRANSMIT_RATE = 500 * time.Millisecond
 	TIMEOUT_LIMIT   = 2 * time.Second
+	HEARTBEAT_RATE  = 500 * time.Millisecond
 )
 
 // ElevatorState struct
 type ElevatorState struct {
+<<<<<<< HEAD
 	floor     int                       `json:"floor"`
 	dirn      Dirn                      `json:"dirn"`
 	requests  [N_FLOORS][N_BUTTONS]bool `json:"requests"`
+=======
+	Floor     int                       `json:"floor"`
+	Dirn      Dirn                      `json:"dirn"`
+	Requests  [N_FLOORS][N_BUTTONS]bool `json:"requests"`
+>>>>>>> 570bb383374cb80bf584013ad00d79c57dd019f8
 	active    bool
 	behaviour ElevatorBehaviour
 
@@ -29,16 +36,20 @@ type ElevatorState struct {
 	ID          int       `json:"id"`
 	IsMaster    bool      `json:"is_master"`
 	LastUpdated time.Time `json:"-"`
+	Heartbeat   time.Time `json:"-"`
 }
 
-// PeerStaus tracks last update time for each elevator
-var PeerStatus = make(map[int]ElevatorState)
+var (
+	PeerStatus = make(map[int]ElevatorState) // PeerStaus tracks last update time for each elevator
+	udpConn    *net.UDPConn                  // UDP socket
+)
 
-// UDP socket
-var udpConn *net.UDPConn
+// PeerStatus as sync.Map instead??
+// sateUpdates as a chan with the stateUpdates
 
 // initNetwork initializes the UDP connection
 func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
+<<<<<<< HEAD
 	// Setting up UDP listener
 	fmt.Println("Hi from initNetwork")
 	addr, _ := net.ResolveUDPAddr("udp", ":"+UDP_PORT)
@@ -55,6 +66,23 @@ func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
 	// Periodic retransmission of state updates
 	go retransmitState(elevatorID, updateChannel)
 
+=======
+	// Use a unique port for each elevator based on its ID
+	localPort := fmt.Sprintf("30%03d", elevatorID) // e.g., 30001, 30002, 30003
+
+	addr, err := net.ResolveUDPAddr("udp", ":"+localPort)
+	conn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		fmt.Println("Error resolving UDP address:", err)
+		return
+	}
+	udpConn = conn
+
+	fmt.Println("Elevator", elevatorID, "listening on UDP port", localPort)
+
+	go listenForUpdates(updateChannel)            // Listening for messages
+	go retransmitState(elevatorID, updateChannel) // Periodic retransmission of state updates
+>>>>>>> 570bb383374cb80bf584013ad00d79c57dd019f8
 }
 
 // listenForUpdates recives UDP packets and updates PeerStatus
@@ -88,6 +116,7 @@ func listenForUpdates(updateChannel chan ElevatorState) {
 
 // retransmitState periodically sends the local elevator's state
 func retransmitState(elevatorID int, updateChannel chan ElevatorState) {
+<<<<<<< HEAD
 	fmt.Println("Hi from retransmitState")
 	addr, err := net.ResolveUDPAddr("udp", BROADCAST_ADDR)
 	if err != nil {
@@ -120,14 +149,85 @@ func retransmitState(elevatorID int, updateChannel chan ElevatorState) {
 
 // sendStateUpdate serializes and broadcasts the state
 func sendStateUpdate(elevator ElevatorState, conn *net.UDPConn, addr *net.UDPAddr) {
+=======
+	ticker := time.NewTicker(RETRANSMIT_RATE)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		for peerID, state := range PeerStatus {
+			if peerID != elevatorID { // Don't send to itself
+				peerPort := fmt.Sprintf("30%03d", peerID) // Get peer's listening port (e.g., 30002)
+				addr, err := net.ResolveUDPAddr("udp", "255.255.255.255:"+peerPort)
+				if err != nil {
+					fmt.Println("Error resolving UDP address:", err)
+					continue
+				}
+
+				conn, err := net.DialUDP("udp", nil, addr) // Correctly set remote address
+				if err != nil {
+					fmt.Println("Error creating UDP connection:", err)
+					continue
+				}
+				defer conn.Close()
+
+				sendStateUpdate(state, BROADCAST_ADDR) // Now properly sends data
+			}
+		}
+	}
+}
+
+// sendStateUpdate serializes and broadcasts the state
+func sendStateUpdate(elevator ElevatorState, addr *net.UDPAddr) {
+	conn, err := net.Dial("udp", BROADCAST_ADDR)
+	if err != nil {
+		fmt.Println("Error connecting to broadcast:", err)
+		return
+	}
+	defer conn.Close()
+
+>>>>>>> 570bb383374cb80bf584013ad00d79c57dd019f8
 	data, err := json.Marshal(elevator)
 	if err != nil {
 		fmt.Println("Error with JSON format:", err)
 		return
 	}
 
+<<<<<<< HEAD
 	_, err = conn.WriteToUDP(data, addr)
 	if err != nil {
 		fmt.Println("Error sending UDP packet:", err)
 	}
+=======
+	_, err = udpConn.WriteToUDP(data, addr)
+	if err != nil {
+		fmt.Println("Error sending UDP packet:", err)
+	}
 }
+
+// DetectFailures identifies unresponsive elevators
+func (em *ElevatorManager) DetectFailures() {
+	for id, elevator := range em.Elevators {
+		if time.Since(elevator.lastSeen) > 3*time.Second {
+			fmt.Printf("Elevator %d unresponsive!\n", id)
+			elevator.active = false
+
+			// Redistribute hall calls
+			for f := 0; f < N_FLOORS; f++ {
+				if elevator.requests[f][B_HallUp] {
+					em.AssignHallCall(f, "up")
+				}
+				if elevator.requests[f][B_HallDown] {
+					em.AssignHallCall(f, "down")
+				}
+			}
+
+			// If master is down, elect again
+			if id == em.MasterID {
+				em.ElectMaster()
+			}
+		}
+	}
+>>>>>>> 570bb383374cb80bf584013ad00d79c57dd019f8
+}
+
+// shouldn't really to the redistribute and electing in the network-module as done above
