@@ -1,5 +1,6 @@
 package main
 
+// functions for reading the input devices of the elevator
 type ElevInputDevice struct {
 	floorSensor   func() int
 	requestButton func(int, ButtonType) int
@@ -7,6 +8,7 @@ type ElevInputDevice struct {
 	obstruction   func() int
 }
 
+// functions for controlling the output devices of the elevator
 type ElevOutputDevice struct {
 	floorIndicator     func(int)
 	requestButtonLight func(int, ButtonType, int)
@@ -33,125 +35,3 @@ func elevioGetOutputDevice() ElevOutputDevice {
 		motorDirection:     hardwareSetMotorDirection,
 	}
 }
-
-// func elevioButtonToString(b ButtonType) string {
-//  switch b {
-//  case BUTTON_HALL_UP:
-//      return "BUTTON_CALL_UP"
-//  case BUTTON_HALL_DOWN:
-//      return "BUTTON_HALL_DOWN"
-//  case BUTTON_CAB:
-//      return "BUTTON_CAB"
-//  default:
-//      return "BUTTON_UNDEFINED"
-//  }
-// }
-
-// func elevioDirnToString(d Dirn) string {
-//  switch d {
-//  case D_Up:
-//      return "D_Up"
-//  case D_Down:
-//      return "D_Down"
-//  case D_Stop:
-//      return "D_Stop"
-//  default:
-//      return "D_UNDEFINED"
-//  }
-// }
-
-/*package main
-
-import (
-	// "fmt"
-)
-
-type Dirn int
-type Button int
-
-
-
-type ElevInputDevice struct {
-	floorSensor    func() int
-	requestButton  func(int, Button) int
-	stopButton     func() int
-	obstruction    func() int
-}
-
-type ElevOutputDevice struct {
-	floorIndicator     func(int)
-	requestButtonLight func(int, Button, int)
-	doorLight          func(int)
-	stopButtonLight    func(int)
-	motorDirection     func(Dirn)
-}
-
-const (
-	D_Down Dirn = -1
-	D_Stop Dirn = 0
-	D_Up   Dirn = 1
-)
-
-const (
-	B_HallUp Button = iota
-	B_HallDown
-	B_Cab
-)
-
-func elevioDirnToString(d Dirn) string {
-	switch d {
-	case D_Up:
-		return "D_Up"
-	case D_Down:
-		return "D_Down"
-	case D_Stop:
-		return "D_Stop"
-	default:
-		return "D_UNDEFINED"
-	}
-}
-
-func elevioButtonToString(b Button) string {
-	switch b {
-	case B_HallUp:
-		return "B_HallUp"
-	case B_HallDown:
-		return "B_HallDown"
-	case B_Cab:
-		return "B_Cab"
-	default:
-		return "B_UNDEFINED"
-	}
-}
-
-func elevioGetInputDevice() ElevInputDevice {
-	return ElevInputDevice{
-		floorSensor:    hardwareGetFloorSensorSignal,
-		requestButton:  wrapRequestButton,
-		stopButton:     hardwareGetStopSignal,
-		obstruction:    hardwareGetObstructionSignal,
-	}
-}
-
-func elevioGetOutputDevice() ElevOutputDevice {
-	return ElevOutputDevice{
-		floorIndicator:     hardwareSetFloorIndicator,
-		requestButtonLight: wrapRequestButtonLight,
-		doorLight:          hardwareSetDoorOpenLamp,
-		stopButtonLight:    hardwareSetStopLamp,
-		motorDirection:     wrapMotorDirection,
-	}
-}
-
-func wrapRequestButton(floor int, btn Button) int {
-	return hardwareGetButtonSignal(btn, floor)
-}
-
-func wrapRequestButtonLight(floor int, btn Button, value int) {
-	hardwareSetButtonLamp(btn, floor, value)
-}
-
-func wrapMotorDirection(dirn Dirn) {
-	hardwareSetMotorDirection(dirn)
-}
-*/
