@@ -18,15 +18,12 @@ const (
 
 // ElevatorState struct
 type ElevatorState struct {
-<<<<<<< HEAD
 	floor     int                       `json:"floor"`
 	dirn      Dirn                      `json:"dirn"`
 	requests  [N_FLOORS][N_BUTTONS]bool `json:"requests"`
-=======
 	Floor     int                       `json:"floor"`
 	Dirn      Dirn                      `json:"dirn"`
 	Requests  [N_FLOORS][N_BUTTONS]bool `json:"requests"`
->>>>>>> 570bb383374cb80bf584013ad00d79c57dd019f8
 	active    bool
 	behaviour ElevatorBehaviour
 
@@ -49,7 +46,7 @@ var (
 
 // initNetwork initializes the UDP connection
 func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
-<<<<<<< HEAD
+
 	// Setting up UDP listener
 	fmt.Println("Hi from initNetwork")
 	addr, _ := net.ResolveUDPAddr("udp", ":"+UDP_PORT)
@@ -66,7 +63,6 @@ func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
 	// Periodic retransmission of state updates
 	go retransmitState(elevatorID, updateChannel)
 
-=======
 	// Use a unique port for each elevator based on its ID
 	localPort := fmt.Sprintf("30%03d", elevatorID) // e.g., 30001, 30002, 30003
 
@@ -82,7 +78,6 @@ func initNetwork(elevatorID int, updateChannel chan ElevatorState) {
 
 	go listenForUpdates(updateChannel)            // Listening for messages
 	go retransmitState(elevatorID, updateChannel) // Periodic retransmission of state updates
->>>>>>> 570bb383374cb80bf584013ad00d79c57dd019f8
 }
 
 // listenForUpdates recives UDP packets and updates PeerStatus
@@ -116,7 +111,7 @@ func listenForUpdates(updateChannel chan ElevatorState) {
 
 // retransmitState periodically sends the local elevator's state
 func retransmitState(elevatorID int, updateChannel chan ElevatorState) {
-<<<<<<< HEAD
+
 	fmt.Println("Hi from retransmitState")
 	addr, err := net.ResolveUDPAddr("udp", BROADCAST_ADDR)
 	if err != nil {
@@ -124,32 +119,32 @@ func retransmitState(elevatorID int, updateChannel chan ElevatorState) {
 		return
 	}
 
-    for range ticker.C {
-        for peerID, state := range PeerStatus {
-            if peerID != elevatorID { // Don't send to itself
-                peerPort := fmt.Sprintf("30%03d", peerID)  // ✅ Get peer's listening port (e.g., 30002)
-                addr, err := net.ResolveUDPAddr("udp", "255.255.255.255:"+peerPort)
-                if err != nil {
-                    fmt.Println("Error resolving UDP address:", err)
-                    continue
-                }
+	for range ticker.C {
+		for peerID, state := range PeerStatus {
+			if peerID != elevatorID { // Don't send to itself
+				peerPort := fmt.Sprintf("30%03d", peerID) // ✅ Get peer's listening port (e.g., 30002)
+				addr, err := net.ResolveUDPAddr("udp", "255.255.255.255:"+peerPort)
+				if err != nil {
+					fmt.Println("Error resolving UDP address:", err)
+					continue
+				}
 
-                conn, err := net.DialUDP("udp", nil, addr) // ✅ Correctly set remote address
-                if err != nil {
-                    fmt.Println("Error creating UDP connection:", err)
-                    continue
-                }
-                defer conn.Close()
+				conn, err := net.DialUDP("udp", nil, addr) // ✅ Correctly set remote address
+				if err != nil {
+					fmt.Println("Error creating UDP connection:", err)
+					continue
+				}
+				defer conn.Close()
 
-                sendStateUpdate(state, conn, addr) // ✅ Now properly sends data
-            }
-        }
-    }
+				sendStateUpdate(state, conn, addr) // ✅ Now properly sends data
+			}
+		}
+	}
 }
 
 // sendStateUpdate serializes and broadcasts the state
 func sendStateUpdate(elevator ElevatorState, conn *net.UDPConn, addr *net.UDPAddr) {
-=======
+
 	ticker := time.NewTicker(RETRANSMIT_RATE)
 	defer ticker.Stop()
 
@@ -185,19 +180,17 @@ func sendStateUpdate(elevator ElevatorState, addr *net.UDPAddr) {
 	}
 	defer conn.Close()
 
->>>>>>> 570bb383374cb80bf584013ad00d79c57dd019f8
 	data, err := json.Marshal(elevator)
 	if err != nil {
 		fmt.Println("Error with JSON format:", err)
 		return
 	}
 
-<<<<<<< HEAD
 	_, err = conn.WriteToUDP(data, addr)
 	if err != nil {
 		fmt.Println("Error sending UDP packet:", err)
 	}
-=======
+
 	_, err = udpConn.WriteToUDP(data, addr)
 	if err != nil {
 		fmt.Println("Error sending UDP packet:", err)
@@ -227,7 +220,7 @@ func (em *ElevatorManager) DetectFailures() {
 			}
 		}
 	}
->>>>>>> 570bb383374cb80bf584013ad00d79c57dd019f8
+
 }
 
 // shouldn't really to the redistribute and electing in the network-module as done above
