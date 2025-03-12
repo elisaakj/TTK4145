@@ -1,5 +1,6 @@
 module Driver-go
 
-go 1.16
+require Network-go v0.0.0
+replace Network-go v0.0.0 => ./Network-go
 
-replace Driver-go => ./Driver-go
+go 1.16
