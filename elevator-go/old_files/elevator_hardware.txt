@@ -1,8 +1,10 @@
+"elevator_hardware.go"
+
 package elevatorStateMachine
 
 import (
 	// "fmt"
-	"fmt"
+
 	"log"
 	"net"
 	"sync"
@@ -36,8 +38,8 @@ const (
 // changed to get simulator working
 func hardwareInit(elevatorID int) {
 	var err error
-	simulatorPort := fmt.Sprintf("localhost:%d", 20100+elevatorID)
-	sock, err = net.Dial("tcp", simulatorPort)
+	// simulatorPort := fmt.Sprintf("localhost:%d", 15555+elevatorID)
+	sock, err = net.Dial("tcp", "localhost:15657")
 	if err != nil {
 		panic("Unable to connect to simulator server")
 	}

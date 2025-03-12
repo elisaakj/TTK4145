@@ -1,6 +1,7 @@
 package elevatorStateMachine
 
 import (
+	"Driver-go/elevator-system/elevio"
 	"fmt"
 	// "time"
 )
@@ -10,36 +11,37 @@ var (
 	outputDevice ElevOutputDevice
 )
 
+/*
 func init() {
 	elevator = elevatorUninitialized()
 	// Simulating config loading
 	elevator.config.doorOpenDurationS = 3.0 // Example default value
 	elevator.config.clearRequestVariant = CV_All
 	outputDevice = elevioGetOutputDevice()
-}
+}*/
 
-func setAllLights(es Elevator) {
+func setAllLights(es Elevator, button elevio.ButtonType) {
 	for floor := 0; floor < N_FLOORS; floor++ {
 		for btn := 0; btn < N_BUTTONS; btn++ {
-			outputDevice.requestButtonLight(floor, Button(btn), boolToInt(es.requests[floor][btn]))
+			outputDevice.requestButtonLight(button, floor, es.requests[floor][btn])
 		}
 	}
 }
 
 func fsmOnInitBetweenFloors() {
-	outputDevice.motorDirection(D_Down)
-	elevator.dirn = D_Down
+	outputDevice.motorDirection(elevio.MD_Down)
+	elevator.dirn = elevio.MD_Down
 	elevator.behaviour = EB_Moving
 }
 
-func fsmOnRequestButtonPress(btnFloor int, btnType Button) {
-	fmt.Printf("\n\nfsmOnRequestButtonPress(%d, %s)\n", btnFloor, elevioButtonToString(btnType))
-	elevatorPrint(elevator)
+func fsmOnRequestButtonPress(btnFloor int, btnType elevio.ButtonType) {
+	//fmt.Printf("\n\nfsmOnRequestButtonPress(%d, %s)\n", btnFloor, elevioButtonToString(btnType))
+	//elevatorPrint(elevator)
 
 	switch elevator.behaviour {
 	case EB_DoorOpen:
 		if requestsShouldClearImmediately(elevator, btnFloor, btnType) {
-			timerStart(elevator.config.doorOpenDurationS)
+			timerStart(elevator.doorOpenDurationS)
 		} else {
 			elevator.requests[btnFloor][btnType] = true
 		}
@@ -52,31 +54,31 @@ func fsmOnRequestButtonPress(btnFloor int, btnType Button) {
 		elevator.behaviour = pair.behaviour
 		switch pair.behaviour {
 		case EB_DoorOpen:
-			outputDevice.doorLight(1)
-			timerStart(elevator.config.doorOpenDurationS)
+			outputDevice.doorLight(true)
+			timerStart(elevator.doorOpenDurationS)
 			elevator = requestsClearAtCurrentFloor(elevator)
 		case EB_Moving:
 			outputDevice.motorDirection(elevator.dirn)
 		}
 	}
 
-	setAllLights(elevator)
+	setAllLights(elevator, btnType)
 	fmt.Println("\nNew state:")
 	elevatorPrint(elevator)
 }
 
-func fsmOnFloorArrival(newFloor int) {
+func fsmOnFloorArrival(newFloor int, button elevio.ButtonType) {
 	fmt.Printf("\n\nfsmOnFloorArrival(%d)\n", newFloor)
 	elevatorPrint(elevator)
 	elevator.floor = newFloor
 	outputDevice.floorIndicator(elevator.floor)
 
 	if elevator.behaviour == EB_Moving && requestsShouldStop(elevator) {
-		outputDevice.motorDirection(D_Stop)
-		outputDevice.doorLight(1)
+		outputDevice.motorDirection(elevio.MD_Stop)
+		outputDevice.doorLight(true)
 		elevator = requestsClearAtCurrentFloor(elevator)
-		timerStart(elevator.config.doorOpenDurationS)
-		setAllLights(elevator)
+		timerStart(elevator.doorOpenDurationS)
+		setAllLights(elevator, button)
 		elevator.behaviour = EB_DoorOpen
 	}
 
@@ -84,12 +86,12 @@ func fsmOnFloorArrival(newFloor int) {
 	elevatorPrint(elevator)
 }
 
-func fsmOnDoorTimeout() {
+func fsmOnDoorTimeout(button elevio.ButtonType) {
 	fmt.Println("\n\nfsmOnDoorTimeout()")
 	elevatorPrint(elevator)
 
-	if hardwareGetObstructionSignal() != 0 {
-		timerStart(elevator.config.doorOpenDurationS)
+	if elevio.GetObstruction() {
+		timerStart(elevator.doorOpenDurationS)
 		return
 	}
 
@@ -99,11 +101,11 @@ func fsmOnDoorTimeout() {
 		elevator.behaviour = pair.behaviour
 		switch elevator.behaviour {
 		case EB_DoorOpen:
-			timerStart(elevator.config.doorOpenDurationS)
+			timerStart(elevator.doorOpenDurationS)
 			elevator = requestsClearAtCurrentFloor(elevator)
-			setAllLights(elevator)
+			setAllLights(elevator, button)
 		case EB_Moving, EB_Idle:
-			outputDevice.doorLight(0)
+			outputDevice.doorLight(false)
 			outputDevice.motorDirection(elevator.dirn)
 		}
 	}
@@ -117,8 +119,8 @@ func fsmOnObstruction() {
 	elevatorPrint(elevator)
 
 	if elevator.behaviour == EB_DoorOpen {
-		outputDevice.doorLight(1) // Keep door open
-		timerStop()               // Stop the timer while obstructed
+		outputDevice.doorLight(true) // Keep door open
+		timerStop()                  // Stop the timer while obstructed
 	}
 
 	fmt.Println("\nNew state:")
@@ -130,8 +132,8 @@ func fsmOnObstructionCleared() {
 	elevatorPrint(elevator)
 
 	if elevator.behaviour == EB_DoorOpen {
-		outputDevice.doorLight(1)                     // Keep door open
-		timerStart(elevator.config.doorOpenDurationS) // Restart door timer
+		outputDevice.doorLight(true)           // Keep door open
+		timerStart(elevator.doorOpenDurationS) // Restart door timer
 	}
 
 	fmt.Println("\nNew state:")

@@ -1,12 +1,10 @@
 package main
 
 import (
-	"Driver-go/elevator-system/communication"
 	"Driver-go/elevator-system/elevatorStateMachine"
-	"Network-go/network/localip"
+	"Driver-go/elevator-system/elevio"
 	"flag"
 	"fmt"
-	"os"
 	"strconv"
 )
 
@@ -26,83 +24,49 @@ func main() {
 		idInt = 1 // Default ID if conversion fails
 	}
 
-	if id == "" {
-		localIP, err := localip.LocalIP()
-		if err != nil {
-			fmt.Println(err)
-			localIP = "DISCONNECTED"
-		}
-		id = fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
+	numFloors := 4
+	numButtons := 3
+
+	addr := fmt.Sprintf("localhost:%d", 15555+idInt)
+	elevio.Init(addr, numFloors)
+
+	ch := elevatorStateMachine.stateMachineChannels{
+		orderComplete:  make(chan int),
+		elevator:       make(chan elevatorStateMachine.Elevator),
+		newOrder:       make(chan elevio.ButtonType),
+		arrivedAtFloor: make(chan int),
+		obstruction:    make(chan bool),
 	}
 
-	updateChannel := make(chan communication.ElevatorState)
-	communication.InitNetwork(idInt, updateChannel)
+	elevatorStateMachine.RunElevator(ch, idInt, numFloors, numButtons)
 
-	elevatorStateMachine.RunElevator()
-}
+	// want to have the our looking like something like this below
+	drv_buttons := make(chan elevio.ButtonEvent)
+	drv_floors := make(chan int)
+	drv_obstr := make(chan bool)
+	drv_stop := make(chan bool)
 
-/*
-	go func() {
-		for {
-			select {
-			case newState := <-updateChannel:
-				// Handle received state updates
-				fmt.Printf("Elevator %d received update: %+v\n", elevatorID, newState)
-				if newState.ID != elevatorID {
-					fmt.Printf("Updating peer elevator %d state...\n", newState.ID)
-				}
-			default:
-				// Request button handling
-				for f := 0; f < N_FLOORS; f++ {
-					for b := 0; b < N_BUTTONS; b++ {
-						v := input.requestButton(f, Button(b))
-						if v != 0 && v != prevRequests[f][b] {
-							fsmOnRequestButtonPress(f, Button(b))
-						}
-						prevRequests[f][b] = v
-					}
-				}
+	go elevio.PollButtons(drv_buttons)
+	go elevio.PollFloorSensor(drv_floors)
+	go elevio.PollObstructionSwitch(drv_obstr)
+	go elevio.PollStopButton(drv_stop)
 
-				// Obstruction handling
-				obstr := input.obstruction()
-				if obstr != 0 && prevObstr == 0 {
-					fmt.Println("Obstruction detected! Keeping doors open.")
-					fsmOnObstruction()
-				} else if obstr == 0 && prevObstr != 0 {
-					fmt.Println("Obstruction cleared. Resuming operation.")
-					fsmOnObstructionCleared()
-				}
-				prevObstr = obstr
+	//updateChannel := make(chan communication.ElevatorState)
+	//communication.InitNetwork(idInt, updateChannel)
 
-				// Floor sensor handling
-				floor := input.floorSensor()
-				if floor != -1 && floor != prevFloor {
-					fsmOnFloorArrival(floor)
-				}
-				prevFloor = floor
+	for {
+		select {
+		case buttonEvent := <-drv_buttons:
+			ch.newOrder <- buttonEvent
 
-				// Timer handling
-				if timerTimedOut() {
-					timerStop()
-					fsmOnDoorTimeout()
-				}
+		case floor := <-drv_floors:
+			ch.arrivedAtFloor <- floor
 
-				// Send periodic state updates
-				state := ElevatorState{
-					ID:        elevatorID,
-					floor:     elevator.floor,
-					dirn:      elevator.dirn,
-					behaviour: elevator.behaviour,
-					active:    true,
-				}
-				sendStateUpdate(state, nil)
+		case obstrution := <-drv_obstr:
+			ch.obstrution <- obstrution
 
-				time.Sleep(inputPollRate)
-			}
+			//case stop := <-drv_stop:
+			// do not need to implement
 		}
-	}()
-
-	// Keep the program running
-	select {}
+	}
 }
-*/
