@@ -2,6 +2,7 @@ package communication
 
 import (
 	"Driver-go/elevator-system/elevatorStateMachine"
+	"Driver-go/elevator-system/elevio"
 	"Network-go/network/bcast"
 	"Network-go/network/peers"
 	"encoding/json"
@@ -22,12 +23,11 @@ const (
 
 // ElevatorState struct
 type ElevatorState struct {
-	floor     int                                                                 `json:"floor"`
-	dirn      elevatorStateMachine.Dirn                                           `json:"dirn"`
-	requests  [elevatorStateMachine.N_FLOORS][elevatorStateMachine.N_BUTTONS]bool `json:"requests"`
-	active    bool
-	behaviour elevatorStateMachine.ElevatorBehaviour
-
+	Floor     int                                    `json:"floor"`
+	Dirn      elevio.MotorDirection                  `json:"dirn"`
+	Requests  [][]bool                               `json:"requests"`
+	Active    bool                                   `json:"active"`
+	Behaviour elevatorStateMachine.ElevatorBehaviour `json:"behavoiur"`
 	// The ones above are the same as in the Elevator struct minus a few, the ones below is needed for the state
 	// Probably a cleaner way to implement this, since we already have a similar struct
 

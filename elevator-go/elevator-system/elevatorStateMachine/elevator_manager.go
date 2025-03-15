@@ -2,6 +2,8 @@ package elevatorStateMachine
 
 /*
 import (
+	"Driver-go/elevator-system/communication"
+	"Driver-go/elevator-system/elevio"
 	"fmt"
 	"math"
 	"time"
@@ -20,7 +22,7 @@ type ElevatorManager struct {
 func (em *ElevatorManager) ElectMaster() {
 	minID := em.ID
 	for id, elevator := range em.Elevators {
-		if elevator.active && id < minID {
+		if elevator.Active && id < minID {
 			minID = id
 		}
 	}
@@ -33,7 +35,7 @@ func (em *ElevatorManager) ElectMaster() {
 func (em *ElevatorManager) SyncState() {
 	if em.IsMaster {
 		for id, elevator := range em.Elevators {
-			if id != em.ID && elevator.active {
+			if id != em.ID && elevator.Active {
 				em.StateUpdated = true
 				fmt.Printf("Syncing state to slave: %d\n", id)
 			}
@@ -46,16 +48,16 @@ func (em *ElevatorManager) SyncState() {
 // DetectFailure identifies unresponsive elevators
 func (em *ElevatorManager) DetectFailure() {
 	for id, elevator := range em.Elevators {
-		if time.Since(elevator.lastSeen) > 3*time.Second {
+		if time.Since(elevator.LastSeen) > 3*time.Second {
 			fmt.Printf("Elevator %d unresponsive!\n", id)
-			elevator.active = false
+			elevator.Active = false
 
 			// Redistribute hall calls
 			for f := 0; f < N_FLOORS; f++ {
-				if elevator.requests[f][B_HallUp] {
+				if elevator.Requests[f][elevio.BT_HallUp] {
 					em.AssignHallCall(f, "up")
 				}
-				if elevator.requests[f][B_HallDown] {
+				if elevator.Requests[f][elevio.BT_HallDown] {
 					em.AssignHallCall(f, "down")
 				}
 			}
@@ -77,43 +79,39 @@ func (em *ElevatorManager) AssignHallCall(floor int, direction string) {
 	bestScore := 999
 
 	for id, elevator := range em.Elevators {
-		if elevator.active {
-			// quite ugly because of the 'math.Abs', can probably be fixed somehow
-			var floorCalc = elevator.floor - floor
-			var floorCalcDone float64 = float64(floorCalc)
-			score := math.Abs(floorCalcDone) // Simple distance calc
-			var scoreInt int = int(score)
-			if scoreInt < bestScore {
-				bestScore = scoreInt
+		if elevator.Active {
+			score := int(math.Abs(float64(elevator.Floor - floor)))
+			if score < bestScore {
+				bestScore = score
 				bestElevator = id
 			}
 		}
 	}
 
 	if bestElevator != -1 {
-		fmt.Printf("Master assigning floor %d to elevator %d\n", floor, bestElevator)
+		em.Elevators[bestElevator].Requests[floor][elevio.BT_HallUp] = true
 	}
 }
 
-func (em *ElevatorManager) UpdateElevatorState(state ElevatorState) {
+func (em *ElevatorManager) UpdateElevatorState(state communication.ElevatorState) {
 	elevator, exist := em.Elevators[state.ID]
 	if !exist {
 		elevator = &Elevator{}
 		em.Elevators[state.ID] = elevator
 	}
 
-	elevator.floor = state.floor
-	elevator.dirn = state.dirn
-	elevator.requests = state.requests
-	elevator.behaviour = state.behaviour
-	elevator.lastSeen = time.Now()
-	elevator.active = true // Mark as active again if previously inactive
+	elevator.Floor = state.Floor
+	elevator.Dirn = state.Dirn
+	elevator.Requests = state.Requests
+	elevator.Behaviour = state.Behaviour
+	elevator.LastSeen = time.Now()
+	elevator.Active = state.Active // Mark as active again if previously inactive
 
 	fmt.Printf("Updated state from elevator %d: %+v\n", state.ID, elevator)
 
 	// if master is down, elect again
-	if state.ID == em.MasterID && !state.active {
-		em.ElectMaster()
+	if state.ID == em.MasterID && !state.Active {
+		em.DetectFailure()
 	}
 }
 */

@@ -23,5 +23,10 @@ func timerStop() {
 }
 
 func timerTimedOut() bool {
-	return timerActive && getWallTime().After(timerEndTime)
+	if timerActive && getWallTime().After(timerEndTime) {
+		timerActive = false
+		return true
+	}
+	return false
+	//return timerActive && getWallTime().After(timerEndTime)
 }

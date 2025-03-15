@@ -10,25 +10,26 @@ type ElevatorBehaviour int
 type ClearRequestVariant int
 
 // this struct with channels is not implemented properly yet
-type stateMachineChannels struct {
-	orderComplete chan int
-	elevator      chan Elevator
+type FsmChannels struct {
+	OrderComplete chan int
+	Elevator      chan Elevator
 	// state error here?
-	newOrder       chan elevio.ButtonType
-	arrivedAtFloor chan int
-	obstruction    chan bool
+	NewOrder       chan elevio.ButtonEvent
+	ArrivedAtFloor chan int
+	Obstruction    chan bool
 }
 
 type Elevator struct {
 	ID                  int
-	floor               int
-	dirn                elevio.MotorDirection
-	requests            [][]bool
-	behaviour           ElevatorBehaviour
-	clearRequestVariant ClearRequestVariant
-	doorOpenDurationS   float64
-	active              bool
-	lastSeen            time.Time
+	Floor               int
+	Dirn                elevio.MotorDirection
+	Requests            [][]bool
+	Behaviour           ElevatorBehaviour
+	ClearRequestVariant ClearRequestVariant
+	DoorOpenDurationS   float64
+	Obstructed          bool
+	Active              bool
+	LastSeen            time.Time
 }
 
 type ElevInputDevice struct {
@@ -77,8 +78,8 @@ func ebToString(eb ElevatorBehaviour) string {
 
 func elevatorPrint(es Elevator) {
 	fmt.Println("  +--------------------+")
-	fmt.Printf("  |floor = %-2d          |\n", es.floor)
-	fmt.Printf("  |dirn  = %-12.12s|\n", ebToString(es.behaviour))
+	fmt.Printf("  |floor = %-2d          |\n", es.Floor)
+	fmt.Printf("  |dirn  = %-12.12s|\n", ebToString(es.Behaviour))
 	fmt.Println("  +--------------------+")
 	fmt.Println("  |  | up  | dn  | cab |")
 	for f := N_FLOORS - 1; f >= 0; f-- {
@@ -87,7 +88,7 @@ func elevatorPrint(es Elevator) {
 			if (f == N_FLOORS-1 && btn == int(elevio.BT_HallUp)) || (f == 0 && btn == int(elevio.BT_HallDown)) {
 				fmt.Print("|     ")
 			} else {
-				if es.requests[f][btn] {
+				if es.Requests[f][btn] {
 					fmt.Print("|  #  ")
 				} else {
 					fmt.Print("|  -  ")
@@ -122,44 +123,82 @@ func elevioGetOutputDevice() ElevOutputDevice {
 func elevatorUninitialized(id int, numFloors int, numButtons int) Elevator {
 	return Elevator{
 		ID:                id,
-		floor:             elevio.GetFloor(),
-		dirn:              elevio.MD_Stop,
-		behaviour:         EB_Idle,
-		requests:          make([][]bool, numFloors),
-		doorOpenDurationS: 3.0,
+		Floor:             elevio.GetFloor(),
+		Dirn:              elevio.MD_Stop,
+		Behaviour:         EB_Idle,
+		Requests:          make([][]bool, numFloors),
+		DoorOpenDurationS: 3.0,
 	}
 }
 
 // should init and then run stateMachine
-func RunElevator(ch stateMachineChannels, id int, numFloors int, numButtons int) {
+func RunElevator(ch FsmChannels, id int, numFloors int, numButtons int) {
 
-	// Init elevator
-	elevatorUninitialized(id, numFloors, numButtons)
+	// Initialize elevator
+	//elevator := elevatorUninitialized(id, numFloors, numButtons)
 
-	for i := range elevator.requests {
-		elevator.requests[i] = make([]bool, numButtons)
+	//if elevio.GetFloor() == -1 {
+	//	fsmOnInitBetweenFloors()
+	//}
+
+	elevator := Elevator{
+		ID:                id,
+		Behaviour:         EB_Idle,
+		Dirn:              elevio.MD_Stop,
+		Floor:             elevio.GetFloor(),
+		Requests:          make([][]bool, numFloors),
+		DoorOpenDurationS: 3.0,
 	}
 
-	ch.elevator <- elevator
+	for i := range elevator.Requests {
+		elevator.Requests[i] = make([]bool, numButtons)
+	}
+
+	if elevator.Floor == -1 {
+		elevator.Floor = 0
+		elevator.Dirn = elevio.MD_Down
+		elevator.Behaviour = EB_Moving
+		elevio.SetMotorDirection(elevator.Dirn)
+	}
+
+	// Send initialized elevator to channels
+	//ch.Elevator <- elevator
+	select {
+	case ch.Elevator <- elevator:
+		fmt.Println("Elevator state sent to channel")
+	default:
+		fmt.Println("Warning: No receiver for ch.Elevator!")
+	}
+
+	// var lastButtonEvent elevio.ButtonEvent
+	fmt.Println("RunElevator started!") // Add this to confirm the function is running
 
 	for {
 		select {
-		// run elevator in different cases
-		case newOrder := <-ch.newOrder:
-			fsmOnRequestButtonPress(elevator.floor, newOrder)
-		case elevator.floor = <-ch.arrivedAtFloor:
-			fsmOnFloorArrival(elevator.floor, <-ch.newOrder)
-		case obstruction := <-ch.obstruction:
-			//rewrite obstruction function in fsm
-		case 
-		}
+		case NewOrder := <-ch.NewOrder:
+			fmt.Printf("RunElevator received order: %+v\n", NewOrder) // Debugging
+			fsmOnRequestButtonPress(&elevator, NewOrder, ch)
 
-		// needed? not used now as far as I can see
+		case elevator.Floor = <-ch.ArrivedAtFloor:
+			fmt.Printf("Floor sensor triggered: %d\n", elevator.Floor) // Debugging
+			fsmOnFloorArrival(elevator.Floor, &elevator, ch, numButtons)
+
+		case obstruction := <-ch.Obstruction:
+			fmt.Printf("Obstruction event: %t\n", obstruction) // Debugging
+			fsmOnObstruction(&elevator, obstruction, ch)
+
+		case <-time.After(time.Duration(elevator.DoorOpenDurationS) * time.Second):
+			if elevator.Behaviour == EB_DoorOpen {
+				fmt.Println("Door timeout, closing doors")
+				fsmOnDoorTimeout(&elevator, ch)
+			}
+		}
+	}
+	/*
 		if input.floorSensor == -1 {
 			fsmOnInitBetweenFloors()
 		}
 
-		/*
 		inputPollRate := 25 * time.Millisecond
 		input := elevioGetInputDevice(button, floor)
 
@@ -207,6 +246,6 @@ func RunElevator(ch stateMachineChannels, id int, numFloors int, numButtons int)
 			}
 
 			time.Sleep(inputPollRate)
-			*/
-		}
-	}
+	*/
+
+}
