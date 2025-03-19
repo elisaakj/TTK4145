@@ -30,6 +30,7 @@ type Elevator struct {
 	Obstructed          bool
 	Active              bool
 	LastSeen            time.Time
+	OrderID             int 
 }
 
 type ElevInputDevice struct {

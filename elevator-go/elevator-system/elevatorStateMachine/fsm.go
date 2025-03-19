@@ -2,6 +2,7 @@ package elevatorStateMachine
 
 import (
 	"Driver-go/elevator-system/elevio"
+	"Driver-go/elevator-system/communication"
 	"fmt"
 	// "time"
 )
@@ -19,6 +20,13 @@ func init() {
 	elevator.config.clearRequestVariant = CV_All
 	outputDevice = elevioGetOutputDevice()
 }*/
+
+type HallCallUpdate struct {
+    ElevatorID int
+    OrderID    int
+    Floor      int
+    Button     elevio.ButtonType
+}
 
 func setAllLights(es Elevator, button elevio.ButtonType) {
 	for floor := 0; floor < N_FLOORS; floor++ {
@@ -44,10 +52,23 @@ func fsmOnRequestButtonPress(elevator *Elevator, event elevio.ButtonEvent, ch Fs
 	//fmt.Printf("\n\nfsmOnRequestButtonPress(%d, %s)\n", btnFloor, elevioButtonToString(btnType))
 	//elevatorPrint(elevator)
 
+	// if already requested, do nothing
 	if elevator.Requests[event.Floor][event.Button] {
 		return
 	}
 
+	// else it should update the global state
+	// broadcast the new state to all elevators
+	// when other elevators receive the new state, they should update their own state and broadcast update number
+
+	//  1. Update local state and increment order ID
+	elevator.Requests[event.Floor][event.Button] = true
+	elevio.SetButtonLamp(event.Button, event.Floor, true)
+	elevator.OrderID = (elevator.OrderID + 1) % 1000 // 
+	//  2. Broadcast new hall call request
+	go broadcastHallCall(*elevator, event, hallCallTx)
+
+	// setting the request to true, and hall light to be switched on
 	elevator.Requests[event.Floor][event.Button] = true
 	elevio.SetButtonLamp(event.Button, event.Floor, true)
 
@@ -198,4 +219,29 @@ func boolToInt(b bool) int {
 		return 1
 	}
 	return 0
+}
+
+
+func broadcastHallCall(elevator Elevator, event elevio.ButtonEvent, hallCallTx chan HallCallUpdate) {
+	msg := HallCallUpdate{
+		ElevatorID: elevator.ID,
+		OrderID:    elevator.OrderID,
+		Floor:      event.Floor,
+		Button:     event.Button,
+	}
+	hallCallTx <- msg
+}
+
+func handleReceivedHallCall(update HallCallUpdate, elevator *Elevator, hallCallTx chan HallCallUpdate) {
+	if update.OrderID <= elevator.OrderID {
+		return // Ignore duplicate or outdated updates
+	}
+
+	// Update state
+	elevator.Requests[update.Floor][update.Button] = true
+	elevator.OrderID = update.OrderID
+	elevio.SetButtonLamp(update.Button, update.Floor, true)
+
+	// Rebroadcast confirmation
+	sendHallCallUpdate(update.ElevatorID, update.OrderID, update.Floor, update.Button, hallCallTx)
 }

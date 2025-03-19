@@ -35,6 +35,7 @@ type ElevatorState struct {
 	IsMaster    bool      `json:"is_master"`
 	LastUpdated time.Time `json:"-"`
 	Heartbeat   time.Time `json:"-"`
+	OrderID    int
 }
 
 var (
@@ -47,26 +48,51 @@ var (
 // PeerStatus as sync.Map instead??
 // sateUpdates as a chan with the stateUpdates
 
+// Testing new implementation
+type HallCallUpdate struct {
+	ElevatorID int
+	OrderID    int
+	Floor      int
+	Button     elevio.ButtonType
+}
+
+
 // initNetwork initializes the UDP connection
 func InitNetwork(elevatorID int, updateChannel chan ElevatorState) {
-	// Use a fixed port for peer discovery (same for all elevators)
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	peerTxEnable := make(chan bool)
 
-	// Each elevator broadcasts its presence and listens for other peers
 	go peers.Transmitter(15647, fmt.Sprintf("elevator-%d", elevatorID), peerTxEnable)
 	go peers.Receiver(15647, peerUpdateCh)
 
-	// Unique port for each elevator broadcasting
-	statePort := 20100 + elevatorID // Example: 20101, 20102, ...
-
+	statePort := 20100 + elevatorID
 	stateTx := make(chan ElevatorState)
 	stateRx := make(chan ElevatorState)
 
-	go bcast.Transmitter(statePort, stateTx) // Transmit state on unique port
-	go bcast.Receiver(statePort, stateRx)    // Receive state on unique port
+	go bcast.Transmitter(statePort, stateTx)
+	go bcast.Receiver(statePort, stateRx)
 
-	// Track peer updates
+	// //  Hall Call Channels
+	// hallCallTx := make(chan HallCallUpdate)
+	// hallCallRx := make(chan HallCallUpdate)
+
+	// //  Start Hall Call Transmitter/Receiver
+	// go bcast.Transmitter(20200, hallCallTx)
+	// go bcast.Receiver(20200, hallCallRx)
+
+	// //  Start Hall Call Update Listener
+	// go listenForHallCallUpdates(hallCallRx, updateChannel)
+
+	// Hall Call Channels
+	hallCallRx := make(chan HallCallUpdate)
+
+	// Start Hall Call Transmitter/Receiver
+	go bcast.Transmitter(20200, hallCallTx)
+	go bcast.Receiver(20200, hallCallRx)
+
+	// Start Hall Call Update Listener
+	go listenForHallCallUpdates(hallCallRx, updateChannel, hallCallTx)
+
 	go func() {
 		for {
 			select {
@@ -74,13 +100,11 @@ func InitNetwork(elevatorID int, updateChannel chan ElevatorState) {
 				activePeers = peerUpdate.Peers
 				fmt.Println("Updated peer list:", activePeers)
 			case receivedState := <-stateRx:
-				// Process state updates from other elevators
 				updateChannel <- receivedState
 			}
 		}
 	}()
 
-	// Start periodic state transmission
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
@@ -114,6 +138,40 @@ func listenForUpdates(updateChannel chan ElevatorState) {
 		stateUpdates <- receivedState
 	}
 }
+
+//  Processes received hall call updates
+func listenForHallCallUpdates(hallCallRx chan HallCallUpdate, updateChannel chan ElevatorState, hallCallTx chan HallCallUpdate) {
+	for update := range hallCallRx {
+		currentState, exists := getPeerStatus(update.ElevatorID)
+		if !exists || update.OrderID > currentState.OrderID {
+			// Update state with new hall call
+			currentState.Requests[update.Floor][update.Button] = true
+			currentState.OrderID = update.OrderID
+
+			// Store updated state
+			PeerStatus.Store(update.ElevatorID, currentState)
+
+			// Notify FSM of new request
+			updateChannel <- currentState
+
+			// Rebroadcast confirmation
+			sendHallCallUpdate(update.ElevatorID, update.OrderID, update.Floor, update.Button, hallCallTx)
+		}
+	}
+}
+
+// ✅ Sends a hall call update
+func sendHallCallUpdate(elevatorID int, orderID int, floor int, button elevio.ButtonType, hallCallTx chan HallCallUpdate) {
+	update := HallCallUpdate{
+		ElevatorID: elevatorID,
+		OrderID:    orderID,
+		Floor:      floor,
+		Button:     button,
+	}
+	hallCallTx <- update
+}
+
+
 
 func processStateUpdates(updateChannel chan ElevatorState) {
 	for state := range stateUpdates {
