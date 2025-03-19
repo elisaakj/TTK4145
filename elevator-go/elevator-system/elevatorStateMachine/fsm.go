@@ -2,7 +2,7 @@ package elevatorStateMachine
 
 import (
 	"Driver-go/elevator-system/elevio"
-	"Driver-go/elevator-system/communication"
+	"Driver-go/elevator-system/sync"
 	"fmt"
 	// "time"
 )
@@ -11,22 +11,6 @@ var (
 	elevator     Elevator
 	outputDevice ElevOutputDevice
 )
-
-/*
-func init() {
-	elevator = elevatorUninitialized()
-	// Simulating config loading
-	elevator.config.doorOpenDurationS = 3.0 // Example default value
-	elevator.config.clearRequestVariant = CV_All
-	outputDevice = elevioGetOutputDevice()
-}*/
-
-type HallCallUpdate struct {
-    ElevatorID int
-    OrderID    int
-    Floor      int
-    Button     elevio.ButtonType
-}
 
 func setAllLights(es Elevator, button elevio.ButtonType) {
 	for floor := 0; floor < N_FLOORS; floor++ {
@@ -64,9 +48,9 @@ func fsmOnRequestButtonPress(elevator *Elevator, event elevio.ButtonEvent, ch Fs
 	//  1. Update local state and increment order ID
 	elevator.Requests[event.Floor][event.Button] = true
 	elevio.SetButtonLamp(event.Button, event.Floor, true)
-	elevator.OrderID = (elevator.OrderID + 1) % 1000 // 
+	elevator.OrderID = (elevator.OrderID + 1) % 1000 //
 	//  2. Broadcast new hall call request
-	go broadcastHallCall(*elevator, event, hallCallTx)
+	go sync.broadcastHallCall(*elevator, event, hallCallTx)
 
 	// setting the request to true, and hall light to be switched on
 	elevator.Requests[event.Floor][event.Button] = true
@@ -162,30 +146,6 @@ func fsmOnDoorTimeout(elevator *Elevator, ch FsmChannels) {
 		elevio.SetMotorDirection(elevator.Dirn)
 	}
 
-	/*
-		if elevator.dirn == elevio.MD_Stop {
-			elevator.behaviour = EB_Idle
-		} else {
-			elevator.behaviour = EB_Moving
-			elevio.SetMotorDirection(elevator.dirn)
-		}
-
-			if elevator.behaviour == EB_DoorOpen {
-				pair := requestsChooseDirection(elevator)
-				elevator.dirn = pair.dirn
-				elevator.behaviour = pair.behaviour
-				switch elevator.behaviour {
-				case EB_DoorOpen:
-					timerStart(elevator.doorOpenDurationS)
-					elevator = requestsClearAtCurrentFloor(elevator)
-					setAllLights(elevator, event.Button)
-				case EB_Moving, EB_Idle:
-					outputDevice.doorLight(false)
-					outputDevice.motorDirection(elevator.dirn)
-				}
-			}
-	*/
-
 	ch.Elevator <- *elevator
 }
 
@@ -219,29 +179,4 @@ func boolToInt(b bool) int {
 		return 1
 	}
 	return 0
-}
-
-
-func broadcastHallCall(elevator Elevator, event elevio.ButtonEvent, hallCallTx chan HallCallUpdate) {
-	msg := HallCallUpdate{
-		ElevatorID: elevator.ID,
-		OrderID:    elevator.OrderID,
-		Floor:      event.Floor,
-		Button:     event.Button,
-	}
-	hallCallTx <- msg
-}
-
-func handleReceivedHallCall(update HallCallUpdate, elevator *Elevator, hallCallTx chan HallCallUpdate) {
-	if update.OrderID <= elevator.OrderID {
-		return // Ignore duplicate or outdated updates
-	}
-
-	// Update state
-	elevator.Requests[update.Floor][update.Button] = true
-	elevator.OrderID = update.OrderID
-	elevio.SetButtonLamp(update.Button, update.Floor, true)
-
-	// Rebroadcast confirmation
-	sendHallCallUpdate(update.ElevatorID, update.OrderID, update.Floor, update.Button, hallCallTx)
 }

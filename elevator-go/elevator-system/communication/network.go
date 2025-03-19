@@ -3,6 +3,7 @@ package communication
 import (
 	"Driver-go/elevator-system/elevatorStateMachine"
 	"Driver-go/elevator-system/elevio"
+	"Driver-go/elevator-system/sync"
 	"Network-go/network/bcast"
 	"Network-go/network/peers"
 	"encoding/json"
@@ -35,7 +36,7 @@ type ElevatorState struct {
 	IsMaster    bool      `json:"is_master"`
 	LastUpdated time.Time `json:"-"`
 	Heartbeat   time.Time `json:"-"`
-	OrderID    int
+	OrderID     int
 }
 
 var (
@@ -44,18 +45,6 @@ var (
 	udpConn      *net.UDPConn // UDP socket
 	activePeers  []string
 )
-
-// PeerStatus as sync.Map instead??
-// sateUpdates as a chan with the stateUpdates
-
-// Testing new implementation
-type HallCallUpdate struct {
-	ElevatorID int
-	OrderID    int
-	Floor      int
-	Button     elevio.ButtonType
-}
-
 
 // initNetwork initializes the UDP connection
 func InitNetwork(elevatorID int, updateChannel chan ElevatorState) {
@@ -84,14 +73,15 @@ func InitNetwork(elevatorID int, updateChannel chan ElevatorState) {
 	// go listenForHallCallUpdates(hallCallRx, updateChannel)
 
 	// Hall Call Channels
-	hallCallRx := make(chan HallCallUpdate)
+	hallCallRx := make(chan sync.HallCallUpdate)
+	hallcallTx := make(chan sync.HallCallUpdate)
 
 	// Start Hall Call Transmitter/Receiver
 	go bcast.Transmitter(20200, hallCallTx)
 	go bcast.Receiver(20200, hallCallRx)
 
 	// Start Hall Call Update Listener
-	go listenForHallCallUpdates(hallCallRx, updateChannel, hallCallTx)
+	go sync.listenForHallCallUpdates(hallCallRx, updateChannel, hallCallTx)
 
 	go func() {
 		for {
@@ -138,40 +128,6 @@ func listenForUpdates(updateChannel chan ElevatorState) {
 		stateUpdates <- receivedState
 	}
 }
-
-//  Processes received hall call updates
-func listenForHallCallUpdates(hallCallRx chan HallCallUpdate, updateChannel chan ElevatorState, hallCallTx chan HallCallUpdate) {
-	for update := range hallCallRx {
-		currentState, exists := getPeerStatus(update.ElevatorID)
-		if !exists || update.OrderID > currentState.OrderID {
-			// Update state with new hall call
-			currentState.Requests[update.Floor][update.Button] = true
-			currentState.OrderID = update.OrderID
-
-			// Store updated state
-			PeerStatus.Store(update.ElevatorID, currentState)
-
-			// Notify FSM of new request
-			updateChannel <- currentState
-
-			// Rebroadcast confirmation
-			sendHallCallUpdate(update.ElevatorID, update.OrderID, update.Floor, update.Button, hallCallTx)
-		}
-	}
-}
-
-// ✅ Sends a hall call update
-func sendHallCallUpdate(elevatorID int, orderID int, floor int, button elevio.ButtonType, hallCallTx chan HallCallUpdate) {
-	update := HallCallUpdate{
-		ElevatorID: elevatorID,
-		OrderID:    orderID,
-		Floor:      floor,
-		Button:     button,
-	}
-	hallCallTx <- update
-}
-
-
 
 func processStateUpdates(updateChannel chan ElevatorState) {
 	for state := range stateUpdates {

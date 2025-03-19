@@ -13,7 +13,6 @@ type ClearRequestVariant int
 type FsmChannels struct {
 	OrderComplete chan int
 	Elevator      chan Elevator
-	// state error here?
 	NewOrder       chan elevio.ButtonEvent
 	ArrivedAtFloor chan int
 	Obstruction    chan bool
@@ -195,58 +194,4 @@ func RunElevator(ch FsmChannels, id int, numFloors int, numButtons int) {
 			}
 		}
 	}
-	/*
-		if input.floorSensor == -1 {
-			fsmOnInitBetweenFloors()
-		}
-
-		inputPollRate := 25 * time.Millisecond
-		input := elevioGetInputDevice(button, floor)
-
-		prevRequests := make([][]int, N_FLOORS)
-		for i := range prevRequests {
-			prevRequests[i] = make([]int, N_BUTTONS)
-		}
-
-		prevFloor := -1
-		prevObstr := 0
-
-		for {
-			for f := 0; f < N_FLOORS; f++ {
-				for b := 0; b < N_BUTTONS; b++ {
-					v := input.requestButton(button, f)
-					if v != 0 && v != prevRequests[f][b] {
-						fsmOnRequestButtonPress(f, Button(b))
-					}
-					prevRequests[f][b] = v
-				}
-			}
-
-			// Obstruction handling
-			// Make as own function
-			obstr := input.obstruction
-			if obstr != 0 && prevObstr == 0 {
-				fsmOnObstruction()
-			} else if obstr == 0 && prevObstr != 0 {
-				fsmOnObstructionCleared()
-			}
-			prevObstr = obstr
-
-			// Floor sensor handling
-			// Makes as own function
-			floor := input.floorSensor
-			if floor != -1 && floor != prevFloor {
-				fsmOnFloorArrival(floor)
-			}
-			prevFloor = floor
-
-			// Timer handling
-			if timerTimedOut() {
-				timerStop()
-				fsmOnDoorTimeout(button)
-			}
-
-			time.Sleep(inputPollRate)
-	*/
-
 }

@@ -58,20 +58,7 @@ func main() {
 
 	updateChannel := make(chan communication.ElevatorState)
 	communication.InitNetwork(idInt, updateChannel)
-	/*
-		go func() {
-			for state := range updateChannel {
-				ch.Elevator <- elevatorStateMachine.Elevator{
-					ID:        state.ID,
-					Floor:     state.Floor,
-					Dirn:      state.Dirn,
-					Requests:  state.Requests,
-					Behaviour: state.Behaviour,
-					Active:    state.Active,
-				}
-			}
-		}()
-	*/
+
 	for {
 		select {
 		case buttonEvent := <-drv_buttons:

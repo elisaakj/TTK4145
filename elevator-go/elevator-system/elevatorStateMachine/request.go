@@ -107,31 +107,4 @@ func requestsClearAtCurrentFloor(e Elevator, numButtons int) Elevator {
 		//}
 	}
 	return e
-	/*
-		switch e.clearRequestVariant {
-		case CV_All:
-			for btn := 0; btn < N_BUTTONS; btn++ {
-				e.requests[e.floor][btn] = false
-			}
-		case CV_InDirn:
-			e.requests[e.floor][elevio.BT_Cab] = false
-
-			switch e.dirn {
-			case elevio.MD_Up:
-				if !requestsAbove(e) && !e.requests[e.floor][elevio.BT_HallUp] {
-					e.requests[e.floor][elevio.BT_HallDown] = false
-				}
-				e.requests[e.floor][elevio.BT_HallUp] = false
-			case elevio.MD_Down:
-				if !requestsBelow(e) && !e.requests[e.floor][elevio.BT_HallDown] {
-					e.requests[e.floor][elevio.BT_HallUp] = false
-				}
-				e.requests[e.floor][elevio.BT_HallDown] = false
-			default:
-				e.requests[e.floor][elevio.BT_HallUp] = false
-				e.requests[e.floor][elevio.BT_HallDown] = false
-			}
-		}
-		return e
-	*/
 }
