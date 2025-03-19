@@ -29,9 +29,9 @@ func main() {
 	numButtons := 3
 
 	//simFromHome := "172.26.129.47:20101"
-	addr := fmt.Sprintf("172.26.129.47:%d", 20100+idInt)
+	//addr := fmt.Sprintf("172.26.129.47:%d", 20100+idInt)
 	//simFromHome := "localhost:15657"
-	//addr := fmt.Sprintf("localhost:%d", 15555+idInt)
+	addr := fmt.Sprintf("localhost:%d", 20100+idInt)
 	elevio.Init(addr, numFloors)
 
 	ch := elevatorStateMachine.FsmChannels{
@@ -62,15 +62,15 @@ func main() {
 	for {
 		select {
 		case buttonEvent := <-drv_buttons:
-			fmt.Printf("📥 Received button event in main: %+v\n", buttonEvent) // Debugging
+			fmt.Printf("Received button event in main: %+v\n", buttonEvent) // Debugging
 			ch.NewOrder <- buttonEvent
 
 		case floor := <-drv_floors:
-			fmt.Printf("📥 Received floor sensor event: %d\n", floor)
+			fmt.Printf("Received floor sensor event: %d\n", floor)
 			ch.ArrivedAtFloor <- floor
 
 		case obstruction := <-drv_obstr:
-			fmt.Printf("📥 Received obstruction event: %t\n", obstruction)
+			fmt.Printf("Received obstruction event: %t\n", obstruction)
 			ch.Obstruction <- obstruction
 
 		case elevator := <-ch.Elevator:

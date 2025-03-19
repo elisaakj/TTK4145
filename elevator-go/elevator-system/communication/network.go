@@ -1,9 +1,8 @@
 package communication
 
 import (
-	"Driver-go/elevator-system/elevatorStateMachine"
+	//"Driver-go/elevator-system/elevatorStateMachine"
 	"Driver-go/elevator-system/elevio"
-	"Driver-go/elevator-system/sync"
 	"Network-go/network/bcast"
 	"Network-go/network/peers"
 	"encoding/json"
@@ -24,11 +23,11 @@ const (
 
 // ElevatorState struct
 type ElevatorState struct {
-	Floor     int                                    `json:"floor"`
-	Dirn      elevio.MotorDirection                  `json:"dirn"`
-	Requests  [][]bool                               `json:"requests"`
-	Active    bool                                   `json:"active"`
-	Behaviour elevatorStateMachine.ElevatorBehaviour `json:"behavoiur"`
+	Floor    int                   `json:"floor"`
+	Dirn     elevio.MotorDirection `json:"dirn"`
+	Requests [][]bool              `json:"requests"`
+	Active   bool                  `json:"active"`
+	//Behaviour elevatorStateMachine.ElevatorBehaviour `json:"behavoiur"`
 	// The ones above are the same as in the Elevator struct minus a few, the ones below is needed for the state
 	// Probably a cleaner way to implement this, since we already have a similar struct
 
@@ -72,23 +71,16 @@ func InitNetwork(elevatorID int, updateChannel chan ElevatorState) {
 	// //  Start Hall Call Update Listener
 	// go listenForHallCallUpdates(hallCallRx, updateChannel)
 
-	// Hall Call Channels
-	hallCallRx := make(chan sync.HallCallUpdate)
-	hallcallTx := make(chan sync.HallCallUpdate)
-
-	// Start Hall Call Transmitter/Receiver
-	go bcast.Transmitter(20200, hallCallTx)
-	go bcast.Receiver(20200, hallCallRx)
-
-	// Start Hall Call Update Listener
-	go sync.listenForHallCallUpdates(hallCallRx, updateChannel, hallCallTx)
-
 	go func() {
 		for {
 			select {
 			case peerUpdate := <-peerUpdateCh:
 				activePeers = peerUpdate.Peers
-				fmt.Println("Updated peer list:", activePeers)
+				fmt.Printf("Peers: %q\n:", peerUpdate.Peers)
+				fmt.Printf("New: %q\n:", peerUpdate.New)
+				fmt.Printf("Lost: %q\n:", peerUpdate.Lost)
+				time.Sleep(1 * time.Second)
+				// Kan bruke print over her til testing, men må ha stopTimer
 			case receivedState := <-stateRx:
 				updateChannel <- receivedState
 			}
@@ -98,7 +90,7 @@ func InitNetwork(elevatorID int, updateChannel chan ElevatorState) {
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
-			if state, exists := getPeerStatus(elevatorID); exists {
+			if state, exists := GetPeerStatus(elevatorID); exists {
 				stateTx <- state
 			}
 		}
@@ -142,7 +134,7 @@ func retransmitState(elevatorID int) {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		if state, exists := getPeerStatus(elevatorID); exists {
+		if state, exists := GetPeerStatus(elevatorID); exists {
 			sendStateUpdate(state, activePeers) // Send only to known peers
 		}
 	}
@@ -183,7 +175,7 @@ func sendHeartbeat(elevatorID int) {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		if state, exist := getPeerStatus(elevatorID); exist {
+		if state, exist := GetPeerStatus(elevatorID); exist {
 			state.Heartbeat = time.Now()
 			PeerStatus.Store(elevatorID, state)
 		}
@@ -207,7 +199,7 @@ func detectFailures() {
 	}
 }
 
-func getPeerStatus(id int) (ElevatorState, bool) {
+func GetPeerStatus(id int) (ElevatorState, bool) {
 	val, ok := PeerStatus.Load(id)
 	if ok {
 		return val.(ElevatorState), true

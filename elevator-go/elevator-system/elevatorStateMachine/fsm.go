@@ -2,7 +2,6 @@ package elevatorStateMachine
 
 import (
 	"Driver-go/elevator-system/elevio"
-	"Driver-go/elevator-system/sync"
 	"fmt"
 	// "time"
 )
@@ -50,7 +49,7 @@ func fsmOnRequestButtonPress(elevator *Elevator, event elevio.ButtonEvent, ch Fs
 	elevio.SetButtonLamp(event.Button, event.Floor, true)
 	elevator.OrderID = (elevator.OrderID + 1) % 1000 //
 	//  2. Broadcast new hall call request
-	go sync.broadcastHallCall(*elevator, event, hallCallTx)
+	//go syncElev.BroadcastHallCall(*elevator, event, hallCallTx)
 
 	// setting the request to true, and hall light to be switched on
 	elevator.Requests[event.Floor][event.Button] = true
@@ -172,11 +171,4 @@ func fsmOnObstructionCleared(elevator *Elevator) {
 	if elevator.Behaviour == EB_DoorOpen {
 		timerStart(elevator.DoorOpenDurationS)
 	}
-}
-
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }
