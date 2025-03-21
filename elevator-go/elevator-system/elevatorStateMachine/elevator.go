@@ -8,67 +8,42 @@ import (
 )
 
 type ElevatorState int
+
 const (
 	IDLE ElevatorState = iota
 	DOOR_OPEN
 	MOVING
+	UNAVAILABLE
 )
 
 type ClearRequestMode int
+
 const (
 	CLEAR_ALL ClearRequestMode = iota
 	CLEAR_DIRECTION
 )
 
-type ElevInputDevice struct {
-	FloorSensor   int
-	RequestButton bool
-	StopButton    bool
-	Obstruction   bool
-}
-
-type ElevOutputDevice struct {
-	FloorIndicator     func(int)
-	RequestButtonLight func(elevio.ButtonType, int, bool)
-	DoorLight          func(bool)
-	StopButtonLight    func(bool)
-	MotorDirection     func(elevio.MotorDirection)
-}
-
 type Elevator struct {
-	ID                  int
-	Floor               int
-	Dirn                elevio.MotorDirection
-	Requests            [][]bool
-	State           	ElevatorState
-	ClearRequestMode 	ClearRequestMode
-	DoorOpenDurationS   float64
-	Obstructed          bool
-	Active              bool
-	LastSeen            time.Time
-	OrderID             int 
+	ID                int
+	Floor             int
+	Dirn              elevio.MotorDirection
+	Requests          [][]bool
+	State             ElevatorState
+	ClearRequestMode  ClearRequestMode
+	DoorOpenDurationS float64
+	Obstructed        bool
+	Active            bool
+	LastSeen          time.Time
+	OrderID           int
 }
 
 // this struct with channels is not implemented properly yet
 type FsmChannels struct {
-	OrderComplete chan int
-	Elevator      chan Elevator
+	//OrderComplete  chan int
+	Elevator       chan Elevator
 	NewOrder       chan elevio.ButtonEvent
 	ArrivedAtFloor chan int
 	Obstruction    chan bool
-}
-
-func stateToString(state ElevatorState) string {
-	switch state {
-	case IDLE:
-		return "IDLE"
-	case DOOR_OPEN:
-		return "DOOR_OPEN"
-	case MOVING:
-		return "MOVING"
-	default:
-		return "UNDEFINED"
-	}
 }
 
 // REMOVE??
@@ -97,31 +72,12 @@ func stateToString(state ElevatorState) string {
 // 	fmt.Println("  +--------------------+")
 // }
 
-func getElevatorInput(button elevio.ButtonType, floor int) ElevInputDevice {
-	return ElevInputDevice{
-		FloorSensor:   elevio.GetFloor(),
-		RequestButton: elevio.GetButton(button, floor),
-		StopButton:    elevio.GetStop(),
-		Obstruction:   elevio.GetObstruction(),
-	}
-}
-
-func getElevatorOutput() ElevOutputDevice {
-	return ElevOutputDevice{
-		FloorIndicator:     elevio.SetFloorIndicator,
-		RequestButtonLight: elevio.SetButtonLamp,
-		DoorLight:          elevio.SetDoorOpenLamp,
-		StopButtonLight:    elevio.SetStopLamp,
-		MotorDirection:     elevio.SetMotorDirection,
-	}
-}
-
 func createUninitializedElevator(id int, numFloors int, numButtons int) Elevator {
 	return Elevator{
 		ID:                id,
 		Floor:             elevio.GetFloor(),
 		Dirn:              elevio.DIRN_STOP,
-		State:         	   MOVING,
+		State:             MOVING,
 		Requests:          make([][]bool, numFloors),
 		DoorOpenDurationS: config.DOOR_OPEN_DURATION,
 	}
@@ -139,7 +95,7 @@ func RunElevator(ch FsmChannels, id int, numFloors int, numButtons int) {
 
 	elevator := Elevator{
 		ID:                id,
-		State:         	   IDLE,
+		State:             IDLE,
 		Dirn:              elevio.DIRN_STOP,
 		Floor:             elevio.GetFloor(),
 		Requests:          make([][]bool, numFloors),

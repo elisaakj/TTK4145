@@ -5,9 +5,7 @@ import (
 	"Driver-go/elevator-system/elevio"
 	"Network-go/network/bcast"
 	"Network-go/network/peers"
-	"encoding/json"
 	"fmt"
-	"net"
 	"sync"
 	"time"
 )
@@ -39,10 +37,8 @@ type ElevatorState struct {
 }
 
 var (
-	PeerStatus   sync.Map // PeerStaus tracks last update time for each elevator
-	stateUpdates = make(chan ElevatorState)
-	udpConn      *net.UDPConn // UDP socket
-	activePeers  []string
+	PeerStatus  sync.Map // PeerStaus tracks last update time for each elevator
+	activePeers []string
 )
 
 // initNetwork initializes the UDP connection
@@ -98,106 +94,6 @@ func InitNetwork(elevatorID int, updateChannel chan ElevatorState) {
 }
 
 // listenForUpdates recives UDP packets and updates peerStatus
-func listenForUpdates(updateChannel chan ElevatorState) {
-	buffer := make([]byte, 1024)
-	for {
-		n, _, err := udpConn.ReadFromUDP(buffer)
-		if err != nil {
-			fmt.Println("Error reciving UDP packet", err)
-			continue
-		}
-
-		var receivedState ElevatorState
-
-		// check if state recived is valid
-		err = json.Unmarshal(buffer[:n], &receivedState)
-		if err != nil {
-			fmt.Println("Error decoding json:", err)
-			continue
-		}
-
-		receivedState.LastUpdated = time.Now()
-		stateUpdates <- receivedState
-	}
-}
-
-func processStateUpdates(updateChannel chan ElevatorState) {
-	for state := range stateUpdates {
-		PeerStatus.Store(state.ID, state)
-		updateChannel <- state
-	}
-}
-
-// retransmitState periodically sends the local elevator's state
-func retransmitState(elevatorID int) {
-	ticker := time.NewTicker(RETRANSMIT_RATE)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		if state, exists := GetPeerStatus(elevatorID); exists {
-			sendStateUpdate(state, activePeers) // Send only to known peers
-		}
-	}
-}
-
-// sendStateUpdate serializes and broadcasts the state
-func sendStateUpdate(elevator ElevatorState, peersList []string) {
-	if udpConn == nil {
-		fmt.Println("udpConn is nil, can't send update")
-		return
-	}
-
-	data, err := json.Marshal(elevator)
-	if err != nil {
-		fmt.Println("Error with JSON format:", err)
-		return
-	}
-
-	// Send to each discovered peer
-	for _, peer := range peersList {
-		addr, _ := net.ResolveUDPAddr("udp", peer+":"+UDP_PORT)
-		conn, err := net.DialUDP("udp", nil, addr)
-		if err != nil {
-			fmt.Println("Error connecting to peer:", err)
-			continue
-		}
-		defer conn.Close()
-
-		_, err = conn.Write(data)
-		if err != nil {
-			fmt.Println("Error sending UDP packet to", peer, ":", err)
-		}
-	}
-}
-
-func sendHeartbeat(elevatorID int) {
-	ticker := time.NewTicker(HEARTBEAT_RATE)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		if state, exist := GetPeerStatus(elevatorID); exist {
-			state.Heartbeat = time.Now()
-			PeerStatus.Store(elevatorID, state)
-		}
-	}
-}
-
-// detectFailures identifies unresponsive elevators
-func detectFailures() {
-	for {
-		time.Sleep(TIMEOUT_LIMIT)
-		now := time.Now()
-		PeerStatus.Range(func(key, value interface{}) bool {
-			id := key.(int)
-			state := value.(ElevatorState)
-			if now.Sub(state.Heartbeat) > TIMEOUT_LIMIT {
-				fmt.Printf("Elevator %d is unresponsive\n", id)
-				PeerStatus.Delete(id)
-			}
-			return true
-		})
-	}
-}
 
 func GetPeerStatus(id int) (ElevatorState, bool) {
 	val, ok := PeerStatus.Load(id)
