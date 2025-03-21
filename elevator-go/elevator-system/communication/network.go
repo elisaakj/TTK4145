@@ -97,7 +97,7 @@ func InitNetwork(elevatorID int, updateChannel chan ElevatorState) {
 	}()
 }
 
-// listenForUpdates recives UDP packets and updates PeerStatus
+// listenForUpdates recives UDP packets and updates peerStatus
 func listenForUpdates(updateChannel chan ElevatorState) {
 	buffer := make([]byte, 1024)
 	for {

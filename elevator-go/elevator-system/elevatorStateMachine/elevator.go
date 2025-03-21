@@ -1,13 +1,53 @@
 package elevatorStateMachine
 
 import (
+	"Driver-go/elevator-system/config"
 	"Driver-go/elevator-system/elevio"
 	"fmt"
 	"time"
 )
 
-type ElevatorBehaviour int
-type ClearRequestVariant int
+type ElevatorState int
+const (
+	IDLE ElevatorState = iota
+	DOOR_OPEN
+	MOVING
+)
+
+type ClearRequestMode int
+const (
+	CLEAR_ALL ClearRequestMode = iota
+	CLEAR_DIRECTION
+)
+
+type ElevInputDevice struct {
+	FloorSensor   int
+	RequestButton bool
+	StopButton    bool
+	Obstruction   bool
+}
+
+type ElevOutputDevice struct {
+	FloorIndicator     func(int)
+	RequestButtonLight func(elevio.ButtonType, int, bool)
+	DoorLight          func(bool)
+	StopButtonLight    func(bool)
+	MotorDirection     func(elevio.MotorDirection)
+}
+
+type Elevator struct {
+	ID                  int
+	Floor               int
+	Dirn                elevio.MotorDirection
+	Requests            [][]bool
+	State           	ElevatorState
+	ClearRequestMode 	ClearRequestMode
+	DoorOpenDurationS   float64
+	Obstructed          bool
+	Active              bool
+	LastSeen            time.Time
+	OrderID             int 
+}
 
 // this struct with channels is not implemented properly yet
 type FsmChannels struct {
@@ -18,116 +58,72 @@ type FsmChannels struct {
 	Obstruction    chan bool
 }
 
-type Elevator struct {
-	ID                  int
-	Floor               int
-	Dirn                elevio.MotorDirection
-	Requests            [][]bool
-	Behaviour           ElevatorBehaviour
-	ClearRequestVariant ClearRequestVariant
-	DoorOpenDurationS   float64
-	Obstructed          bool
-	Active              bool
-	LastSeen            time.Time
-	OrderID             int 
-}
-
-type ElevInputDevice struct {
-	floorSensor   int
-	requestButton bool
-	stopButton    bool
-	obstruction   bool
-}
-
-type ElevOutputDevice struct {
-	floorIndicator     func(int)
-	requestButtonLight func(elevio.ButtonType, int, bool)
-	doorLight          func(bool)
-	stopButtonLight    func(bool)
-	motorDirection     func(elevio.MotorDirection)
-}
-
-const (
-	EB_Idle ElevatorBehaviour = iota
-	EB_DoorOpen
-	EB_Moving
-)
-
-const (
-	CV_All ClearRequestVariant = iota
-	CV_InDirn
-)
-
-const (
-	N_FLOORS  = 4
-	N_BUTTONS = 3
-)
-
-func ebToString(eb ElevatorBehaviour) string {
-	switch eb {
-	case EB_Idle:
-		return "EB_Idle"
-	case EB_DoorOpen:
-		return "EB_DoorOpen"
-	case EB_Moving:
-		return "EB_Moving"
+func stateToString(state ElevatorState) string {
+	switch state {
+	case IDLE:
+		return "IDLE"
+	case DOOR_OPEN:
+		return "DOOR_OPEN"
+	case MOVING:
+		return "MOVING"
 	default:
-		return "EB_UNDEFINED"
+		return "UNDEFINED"
 	}
 }
 
-func elevatorPrint(es Elevator) {
-	fmt.Println("  +--------------------+")
-	fmt.Printf("  |floor = %-2d          |\n", es.Floor)
-	fmt.Printf("  |dirn  = %-12.12s|\n", ebToString(es.Behaviour))
-	fmt.Println("  +--------------------+")
-	fmt.Println("  |  | up  | dn  | cab |")
-	for f := N_FLOORS - 1; f >= 0; f-- {
-		fmt.Printf("  | %d", f)
-		for btn := 0; btn < N_BUTTONS; btn++ {
-			if (f == N_FLOORS-1 && btn == int(elevio.BT_HallUp)) || (f == 0 && btn == int(elevio.BT_HallDown)) {
-				fmt.Print("|     ")
-			} else {
-				if es.Requests[f][btn] {
-					fmt.Print("|  #  ")
-				} else {
-					fmt.Print("|  -  ")
-				}
-			}
-		}
-		fmt.Println("|")
-	}
-	fmt.Println("  +--------------------+")
-}
+// REMOVE??
+//
+// func elevatorPrint(es Elevator) {
+// 	fmt.Println("  +--------------------+")
+// 	fmt.Printf("  |floor = %-2d          |\n", es.Floor)
+// 	fmt.Printf("  |dirn  = %-12.12s|\n", stateToString(es.State))
+// 	fmt.Println("  +--------------------+")
+// 	fmt.Println("  |  | up  | dn  | cab |")
+// 	for f := NUM_FLOORS - 1; f >= 0; f-- {
+// 		fmt.Printf("  | %d", f)
+// 		for btn := 0; btn < NUM_BUTTONS; btn++ {
+// 			if (f == NUM_FLOORS-1 && btn == int(elevio.BT_HallUp)) || (f == 0 && btn == int(elevio.BT_HallDown)) {
+// 				fmt.Print("|     ")
+// 			} else {
+// 				if es.Requests[f][btn] {
+// 					fmt.Print("|  #  ")
+// 				} else {
+// 					fmt.Print("|  -  ")
+// 				}
+// 			}
+// 		}
+// 		fmt.Println("|")
+// 	}
+// 	fmt.Println("  +--------------------+")
+// }
 
-func elevioGetInputDevice(button elevio.ButtonType, floor int) ElevInputDevice {
+func getElevatorInput(button elevio.ButtonType, floor int) ElevInputDevice {
 	return ElevInputDevice{
-		floorSensor:   elevio.GetFloor(),
-		requestButton: elevio.GetButton(button, floor),
-		stopButton:    elevio.GetStop(),
-		obstruction:   elevio.GetObstruction(),
+		FloorSensor:   elevio.GetFloor(),
+		RequestButton: elevio.GetButton(button, floor),
+		StopButton:    elevio.GetStop(),
+		Obstruction:   elevio.GetObstruction(),
 	}
 }
 
-func elevioGetOutputDevice() ElevOutputDevice {
+func getElevatorOutput() ElevOutputDevice {
 	return ElevOutputDevice{
-		floorIndicator:     elevio.SetFloorIndicator,
-		requestButtonLight: elevio.SetButtonLamp,
-		doorLight:          elevio.SetDoorOpenLamp,
-		stopButtonLight:    elevio.SetStopLamp,
-		motorDirection:     elevio.SetMotorDirection,
+		FloorIndicator:     elevio.SetFloorIndicator,
+		RequestButtonLight: elevio.SetButtonLamp,
+		DoorLight:          elevio.SetDoorOpenLamp,
+		StopButtonLight:    elevio.SetStopLamp,
+		MotorDirection:     elevio.SetMotorDirection,
 	}
 }
 
-// change name probably
-func elevatorUninitialized(id int, numFloors int, numButtons int) Elevator {
+func createUninitializedElevator(id int, numFloors int, numButtons int) Elevator {
 	return Elevator{
 		ID:                id,
 		Floor:             elevio.GetFloor(),
-		Dirn:              elevio.MD_Stop,
-		Behaviour:         EB_Idle,
+		Dirn:              elevio.DIRN_STOP,
+		State:         	   MOVING,
 		Requests:          make([][]bool, numFloors),
-		DoorOpenDurationS: 3.0,
+		DoorOpenDurationS: config.DOOR_OPEN_DURATION,
 	}
 }
 
@@ -135,7 +131,7 @@ func elevatorUninitialized(id int, numFloors int, numButtons int) Elevator {
 func RunElevator(ch FsmChannels, id int, numFloors int, numButtons int) {
 
 	// Initialize elevator
-	//elevator := elevatorUninitialized(id, numFloors, numButtons)
+	//elevator := createUninitializedElevator(id, numFloors, numButtons)
 
 	//if elevio.GetFloor() == -1 {
 	//	fsmOnInitBetweenFloors()
@@ -143,21 +139,21 @@ func RunElevator(ch FsmChannels, id int, numFloors int, numButtons int) {
 
 	elevator := Elevator{
 		ID:                id,
-		Behaviour:         EB_Idle,
-		Dirn:              elevio.MD_Stop,
+		State:         	   IDLE,
+		Dirn:              elevio.DIRN_STOP,
 		Floor:             elevio.GetFloor(),
 		Requests:          make([][]bool, numFloors),
-		DoorOpenDurationS: 3.0,
+		DoorOpenDurationS: config.DOOR_OPEN_DURATION,
 	}
 
 	for i := range elevator.Requests {
 		elevator.Requests[i] = make([]bool, numButtons)
 	}
 
-	if elevator.Floor == -1 {
+	if elevator.Floor == config.INVALID_FLOOR {
 		elevator.Floor = 0
-		elevator.Dirn = elevio.MD_Down
-		elevator.Behaviour = EB_Moving
+		elevator.Dirn = elevio.DIRN_DOWN
+		elevator.State = MOVING
 		elevio.SetMotorDirection(elevator.Dirn)
 	}
 
@@ -177,20 +173,20 @@ func RunElevator(ch FsmChannels, id int, numFloors int, numButtons int) {
 		select {
 		case NewOrder := <-ch.NewOrder:
 			fmt.Printf("RunElevator received order: %+v\n", NewOrder) // Debugging
-			fsmOnRequestButtonPress(&elevator, NewOrder, ch)
+			handleRequestButtonPress(&elevator, NewOrder, ch)
 
 		case elevator.Floor = <-ch.ArrivedAtFloor:
 			fmt.Printf("Floor sensor triggered: %d\n", elevator.Floor) // Debugging
-			fsmOnFloorArrival(elevator.Floor, &elevator, ch, numButtons)
+			onFloorArrival(elevator.Floor, &elevator, ch, numButtons)
 
 		case obstruction := <-ch.Obstruction:
 			fmt.Printf("Obstruction event: %t\n", obstruction) // Debugging
-			fsmOnObstruction(&elevator, obstruction, ch)
+			handleObstruction(&elevator, obstruction, ch)
 
 		case <-time.After(time.Duration(elevator.DoorOpenDurationS) * time.Second):
-			if elevator.Behaviour == EB_DoorOpen {
+			if elevator.State == DOOR_OPEN {
 				fmt.Println("Door timeout, closing doors")
-				fsmOnDoorTimeout(&elevator, ch)
+				handleDoorTimeout(&elevator, ch)
 			}
 		}
 	}

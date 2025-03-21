@@ -2,6 +2,7 @@ package main
 
 import (
 	"Driver-go/elevator-system/communication"
+	"Driver-go/elevator-system/config"
 	"Driver-go/elevator-system/elevatorStateMachine"
 	"Driver-go/elevator-system/elevio"
 	"flag"
@@ -22,17 +23,14 @@ func main() {
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
 		fmt.Println("Error: Invalid ID format, using default ID 1")
-		idInt = 1 // Default ID if conversion fails
+		idInt = config.DEFAULT_ID // Default ID if conversion fails
 	}
-
-	numFloors := 4
-	numButtons := 3
 
 	//simFromHome := "172.26.129.47:20101"
 	//addr := fmt.Sprintf("172.26.129.47:%d", 20100+idInt)
 	//simFromHome := "localhost:15657"
-	addr := fmt.Sprintf("localhost:%d", 20100+idInt)
-	elevio.Init(addr, numFloors)
+	addr := fmt.Sprintf("localhost:%d", config.BASE_PORT+idInt)
+	elevio.Init(addr, config.NUM_FLOORS)
 
 	ch := elevatorStateMachine.FsmChannels{
 		OrderComplete:  make(chan int),
@@ -43,7 +41,7 @@ func main() {
 	}
 
 	//go elevatorStateMachine.RunElevator(ch, 1, 4, 3)
-	go elevatorStateMachine.RunElevator(ch, idInt, numFloors, numButtons)
+	go elevatorStateMachine.RunElevator(ch, idInt, config.NUM_FLOORS, config.NUM_BUTTONS)
 
 	// want to have the our looking like something like this below
 	drv_buttons := make(chan elevio.ButtonEvent)

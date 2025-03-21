@@ -15,19 +15,17 @@ var _mtx sync.Mutex
 var _conn net.Conn
 
 type MotorDirection int
-
 const (
-	MD_Up   MotorDirection = 1
-	MD_Down                = -1
-	MD_Stop                = 0
+	DIRN_UP   MotorDirection = 1
+	DIRN_STOP MotorDirection = 0
+	DIRN_DOWN MotorDirection = -1
 )
 
 type ButtonType int
-
 const (
-	BT_HallUp   ButtonType = 0
-	BT_HallDown            = 1
-	BT_Cab                 = 2
+	BUTTON_HALL_UP   ButtonType = iota
+	BUTTON_HALL_DOWN           
+	BUTTON_CAB                 
 )
 
 type ButtonEvent struct {
@@ -55,7 +53,7 @@ func SetMotorDirection(dir MotorDirection) {
 }
 
 func SetButtonLamp(button ButtonType, floor int, value bool) {
-	write([4]byte{2, byte(button), byte(floor), toByte(value)})
+	write([4]byte{2, byte(button), byte(floor), boolToByte(value)})
 }
 
 func SetFloorIndicator(floor int) {
@@ -63,11 +61,11 @@ func SetFloorIndicator(floor int) {
 }
 
 func SetDoorOpenLamp(value bool) {
-	write([4]byte{4, toByte(value), 0, 0})
+	write([4]byte{4, boolToByte(value), 0, 0})
 }
 
 func SetStopLamp(value bool) {
-	write([4]byte{5, toByte(value), 0, 0})
+	write([4]byte{5, boolToByte(value), 0, 0})
 }
 
 func PollButtons(receiver chan<- ButtonEvent) {
@@ -124,7 +122,7 @@ func PollObstructionSwitch(receiver chan<- bool) {
 
 func GetButton(button ButtonType, floor int) bool {
 	a := read([4]byte{6, byte(button), byte(floor), 0})
-	return toBool(a[1])
+	return byteToBool(a[1])
 }
 
 func GetFloor() int {
@@ -138,12 +136,12 @@ func GetFloor() int {
 
 func GetStop() bool {
 	a := read([4]byte{8, 0, 0, 0})
-	return toBool(a[1])
+	return byteToBool(a[1])
 }
 
 func GetObstruction() bool {
 	a := read([4]byte{9, 0, 0, 0})
-	return toBool(a[1])
+	return byteToBool(a[1])
 }
 
 func read(in [4]byte) [4]byte {
@@ -174,7 +172,7 @@ func write(in [4]byte) {
 	}
 }
 
-func toByte(a bool) byte {
+func boolToByte(a bool) byte {
 	var b byte = 0
 	if a {
 		b = 1
@@ -182,7 +180,7 @@ func toByte(a bool) byte {
 	return b
 }
 
-func toBool(a byte) bool {
+func byteToBool(a byte) bool {
 	var b bool = false
 	if a != 0 {
 		b = true

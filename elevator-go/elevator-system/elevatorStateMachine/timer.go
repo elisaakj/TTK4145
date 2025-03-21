@@ -6,25 +6,21 @@ import (
 
 var (
 	timerEndTime time.Time
-	timerActive  bool
+	timerIsActive  bool
 )
 
-func getWallTime() time.Time {
-	return time.Now()
-}
-
 func timerStart(duration float64) {
-	timerEndTime = getWallTime().Add(time.Duration(duration * float64(time.Second)))
-	timerActive = true
+	timerEndTime = time.Now().Add(time.Duration(duration * float64(time.Second)))
+	timerIsActive = true
 }
 
 func timerStop() {
-	timerActive = false
+	timerIsActive = false
 }
 
 func timerTimedOut() bool {
-	if timerActive && getWallTime().After(timerEndTime) {
-		timerActive = false
+	if timerIsActive && time.Now().After(timerEndTime) {
+		timerIsActive = false
 		return true
 	}
 	return false
