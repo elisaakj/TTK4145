@@ -7,140 +7,59 @@ import (
 	"time"
 )
 
-type ElevatorState int
-
-const (
-	IDLE ElevatorState = iota
-	DOOR_OPEN
-	MOVING
-	UNAVAILABLE
-)
-
-type ClearRequestMode int
-
-const (
-	CLEAR_ALL ClearRequestMode = iota
-	CLEAR_DIRECTION
-)
-
 type Elevator struct {
-	ID                int
-	Floor             int
-	Dirn              elevio.MotorDirection
-	Requests          [][]bool
-	State             ElevatorState
-	ClearRequestMode  ClearRequestMode
-	DoorOpenDurationS float64
-	Obstructed        bool
-	Active            bool
-	LastSeen          time.Time
-	OrderID           int
+	ID         int
+	Floor      int
+	Dirn       elevio.MotorDirection
+	Requests   [][]bool
+	State      config.ElevatorState
+	Obstructed bool
+	OrderID    int
 }
 
-// this struct with channels is not implemented properly yet
-type FsmChannels struct {
-	//OrderComplete  chan int
-	Elevator       chan Elevator
-	NewOrder       chan elevio.ButtonEvent
-	ArrivedAtFloor chan int
-	Obstruction    chan bool
-}
-
-// REMOVE??
-//
-// func elevatorPrint(es Elevator) {
-// 	fmt.Println("  +--------------------+")
-// 	fmt.Printf("  |floor = %-2d          |\n", es.Floor)
-// 	fmt.Printf("  |dirn  = %-12.12s|\n", stateToString(es.State))
-// 	fmt.Println("  +--------------------+")
-// 	fmt.Println("  |  | up  | dn  | cab |")
-// 	for f := NUM_FLOORS - 1; f >= 0; f-- {
-// 		fmt.Printf("  | %d", f)
-// 		for btn := 0; btn < NUM_BUTTONS; btn++ {
-// 			if (f == NUM_FLOORS-1 && btn == int(elevio.BT_HallUp)) || (f == 0 && btn == int(elevio.BT_HallDown)) {
-// 				fmt.Print("|     ")
-// 			} else {
-// 				if es.Requests[f][btn] {
-// 					fmt.Print("|  #  ")
-// 				} else {
-// 					fmt.Print("|  -  ")
-// 				}
-// 			}
-// 		}
-// 		fmt.Println("|")
-// 	}
-// 	fmt.Println("  +--------------------+")
-// }
-
-func createUninitializedElevator(id int, numFloors int, numButtons int) Elevator {
+func initElevator(id int) Elevator {
 	return Elevator{
-		ID:                id,
-		Floor:             elevio.GetFloor(),
-		Dirn:              elevio.DIRN_STOP,
-		State:             MOVING,
-		Requests:          make([][]bool, numFloors),
-		DoorOpenDurationS: config.DOOR_OPEN_DURATION,
+		ID:       id,
+		Floor:    elevio.GetFloor(),
+		Dirn:     elevio.DIRN_STOP,
+		State:    config.IDLE,
+		Requests: make([][]bool, config.NUM_FLOORS),
 	}
 }
 
-// should init and then run stateMachine
-func RunElevator(ch FsmChannels, id int, numFloors int, numButtons int) {
+func RunElevator(ch FsmChannels, id int) {
 
-	// Initialize elevator
-	//elevator := createUninitializedElevator(id, numFloors, numButtons)
-
-	//if elevio.GetFloor() == -1 {
-	//	fsmOnInitBetweenFloors()
-	//}
-
-	elevator := Elevator{
-		ID:                id,
-		State:             IDLE,
-		Dirn:              elevio.DIRN_STOP,
-		Floor:             elevio.GetFloor(),
-		Requests:          make([][]bool, numFloors),
-		DoorOpenDurationS: config.DOOR_OPEN_DURATION,
-	}
+	elevator := initElevator(id)
 
 	for i := range elevator.Requests {
-		elevator.Requests[i] = make([]bool, numButtons)
+		elevator.Requests[i] = make([]bool, config.NUM_BUTTONS)
 	}
 
 	if elevator.Floor == config.INVALID_FLOOR {
 		elevator.Floor = 0
 		elevator.Dirn = elevio.DIRN_DOWN
-		elevator.State = MOVING
+		elevator.State = config.MOVING
 		elevio.SetMotorDirection(elevator.Dirn)
 	}
 
-	// Send initialized elevator to channels
-	//ch.Elevator <- elevator
-	select {
-	case ch.Elevator <- elevator:
-		fmt.Println("Elevator state sent to channel")
-	default:
-		fmt.Println("Warning: No receiver for ch.Elevator!")
-	}
-
-	// var lastButtonEvent elevio.ButtonEvent
-	fmt.Println("RunElevator started!") // Add this to confirm the function is running
+	ch.Elevator <- elevator
 
 	for {
 		select {
 		case NewOrder := <-ch.NewOrder:
-			fmt.Printf("RunElevator received order: %+v\n", NewOrder) // Debugging
+			fmt.Printf("RunElevator received order: %+v\n", NewOrder)
 			handleRequestButtonPress(&elevator, NewOrder, ch)
 
 		case elevator.Floor = <-ch.ArrivedAtFloor:
-			fmt.Printf("Floor sensor triggered: %d\n", elevator.Floor) // Debugging
-			onFloorArrival(elevator.Floor, &elevator, ch, numButtons)
+			fmt.Printf("Floor sensor triggered: %d\n", elevator.Floor)
+			onFloorArrival(elevator.Floor, &elevator, ch)
 
 		case obstruction := <-ch.Obstruction:
-			fmt.Printf("Obstruction event: %t\n", obstruction) // Debugging
+			fmt.Printf("Obstruction event: %t\n", obstruction)
 			handleObstruction(&elevator, obstruction, ch)
 
-		case <-time.After(time.Duration(elevator.DoorOpenDurationS) * time.Second):
-			if elevator.State == DOOR_OPEN {
+		case <-time.After(time.Duration(config.DOOR_OPEN_DURATION) * time.Second):
+			if elevator.State == config.DOOR_OPEN {
 				fmt.Println("Door timeout, closing doors")
 				handleDoorTimeout(&elevator, ch)
 			}

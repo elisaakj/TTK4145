@@ -15,8 +15,6 @@ import (
 func main() {
 	fmt.Println("Started!")
 
-	// Init network and elevator
-
 	var id string
 	flag.StringVar(&id, "id", "", "id of this peer")
 	flag.Parse()
@@ -25,11 +23,11 @@ func main() {
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
 		fmt.Println("Error: Invalid ID format, using default ID 1")
-		idInt = config.DEFAULT_ID // Default ID if conversion fails
+		idInt = config.DEFAULT_ID
 	}
 
 	//simFromHome := "172.26.129.47:20101"
-	addr := fmt.Sprintf("172.26.129.47:%d", 20100+idInt)
+	addr := fmt.Sprintf("172.26.129.47:%d", config.BASE_PORT+idInt)
 	//simFromHome := "localhost:15657"
 	//ddr := fmt.Sprintf("localhost:%d", config.BASE_PORT+idInt)
 	elevio.Init(addr, config.NUM_FLOORS)
@@ -40,8 +38,6 @@ func main() {
 	chMsgToUDP := make(chan []config.SyncElevator, 100)
 	chPeerUpdate := make(chan peers.PeerUpdate)
 	chPeerTx := make(chan bool)
-
-	// watchdog
 
 	// channels for comm between syncElev and local elevator
 	chClearLocalHallOrders := make(chan bool)
@@ -58,71 +54,21 @@ func main() {
 	go elevio.PollObstructionSwitch(chObstruction)
 
 	ch := elevatorStateMachine.FsmChannels{
-		//OrderComplete: ,
 		Elevator:       chNewLocalState,
 		NewOrder:       chOrderToLocal,
 		ArrivedAtFloor: chArrivedAtFloor,
 		Obstruction:    chObstruction,
 	}
 
-	go elevatorStateMachine.RunElevator(ch, idInt, config.NUM_FLOORS, config.NUM_BUTTONS)
+	go elevatorStateMachine.RunElevator(ch, idInt)
 
-	// can change InitNetwork
-	statePort := 20100
-	go bcast.Transmitter(statePort, chMsgToUDP)
-	go bcast.Receiver(statePort, chMsgFromUDP)
+	go bcast.Transmitter(20100, chMsgToUDP)
+	go bcast.Receiver(20100, chMsgFromUDP)
 	go peers.Transmitter(15647, id, chPeerTx)
 	go peers.Receiver(15647, chPeerUpdate)
-
-	// go watchdog
 
 	go syncElev.SyncElevators(id, chNewLocalOrder, chNewLocalState, chMsgFromUDP, chMsgToUDP,
 		chOrderToLocal, chPeerUpdate, chClearLocalHallOrders)
 
 	select {}
-
-	/*
-		ch := elevatorStateMachine.FsmChannels{
-			OrderComplete:  make(chan int),
-			Elevator:       make(chan elevatorStateMachine.Elevator),
-			NewOrder:       make(chan elevio.ButtonEvent),
-			ArrivedAtFloor: make(chan int),
-			Obstruction:    make(chan bool),
-		}
-
-		//go elevatorStateMachine.RunElevator(ch, 1, 4, 3)
-		go elevatorStateMachine.RunElevator(ch, idInt, config.NUM_FLOORS, config.NUM_BUTTONS)
-
-		// want to have the our looking like something like this below
-		drv_buttons := make(chan elevio.ButtonEvent)
-		drv_floors := make(chan int)
-		drv_obstr := make(chan bool)
-		//drv_stop := make(chan bool)
-
-		go elevio.PollButtons(drv_buttons)
-		go elevio.PollFloorSensor(drv_floors)
-		go elevio.PollObstructionSwitch(drv_obstr)
-		//go elevio.PollStopButton(drv_stop)
-
-		updateChannel := make(chan communication.ElevatorState)
-		communication.InitNetwork(idInt, updateChannel)
-
-		for {
-			select {
-			case buttonEvent := <-drv_buttons:
-				fmt.Printf("Received button event in main: %+v\n", buttonEvent) // Debugging
-				ch.NewOrder <- buttonEvent
-
-			case floor := <-drv_floors:
-				fmt.Printf("Received floor sensor event: %d\n", floor)
-				ch.ArrivedAtFloor <- floor
-
-			case obstruction := <-drv_obstr:
-				fmt.Printf("Received obstruction event: %t\n", obstruction)
-				ch.Obstruction <- obstruction
-
-			case elevator := <-ch.Elevator:
-				fmt.Printf("Elevator state update: %+v\n", elevator)
-			}
-		}*/
 }

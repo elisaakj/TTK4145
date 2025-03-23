@@ -14,6 +14,15 @@ const (
 	BASE_PORT  = 20100
 )
 
+type ElevatorState int
+
+const (
+	IDLE ElevatorState = iota
+	DOOR_OPEN
+	MOVING
+	UNAVAILABLE
+)
+
 // Below is for syncElev, will fix structure later
 
 type Direction int

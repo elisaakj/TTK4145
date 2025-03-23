@@ -17,7 +17,7 @@ func syncElevatorInit(id string) config.SyncElevator {
 		requests[floor] = make([]config.RequestState, config.NUM_BUTTONS)
 		//	orderID[floor] = make([]int, config.NUM_BUTTONS)
 	}
-	return config.SyncElevator{Requests: requests /*OrderID: orderID,*/, ID: id, Floor: 0, Behave: config.Behaviour(elevatorStateMachine.IDLE)}
+	return config.SyncElevator{Requests: requests /*OrderID: orderID,*/, ID: id, Floor: 0, Behave: config.Behaviour(config.IDLE)}
 }
 
 func broadcast(elevators []*config.SyncElevator, chTx chan<- []config.SyncElevator) {
@@ -89,8 +89,8 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 
 		case newState := <-chNewLocalState:
 			if newState.Floor != elevators[LOCAL_ELEVATOR].Floor ||
-				newState.State == elevatorStateMachine.IDLE ||
-				newState.State == elevatorStateMachine.DOOR_OPEN {
+				newState.State == config.IDLE ||
+				newState.State == config.DOOR_OPEN {
 				elevators[LOCAL_ELEVATOR].Behave = config.Behaviour(int(newState.State))
 				elevators[LOCAL_ELEVATOR].Floor = newState.Floor
 				elevators[LOCAL_ELEVATOR].Dir = config.Direction(int(newState.Dirn))
@@ -101,7 +101,7 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 						elevators[LOCAL_ELEVATOR].Requests[floor][button] == config.Confirmed {
 						elevators[LOCAL_ELEVATOR].Requests[floor][button] = config.Complete
 					}
-					if elevators[LOCAL_ELEVATOR].Behave != config.Behaviour(elevatorStateMachine.UNAVAILABLE) &&
+					if elevators[LOCAL_ELEVATOR].Behave != config.Behaviour(config.UNAVAILABLE) &&
 						newState.Requests[floor][button] &&
 						elevators[LOCAL_ELEVATOR].Requests[floor][button] != config.Confirmed {
 						elevators[LOCAL_ELEVATOR].Requests[floor][button] = config.Confirmed
@@ -145,7 +145,7 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 				for _, stringLostID := range peer.Lost {
 					for _, elev := range elevators {
 						if stringLostID == elev.ID {
-							elev.Behave = config.Behaviour(elevatorStateMachine.UNAVAILABLE)
+							elev.Behave = config.Behaviour(config.UNAVAILABLE)
 						}
 						elevatorManager.ReassignOrders(elevators, chNewLocalOrder, id)
 						for floor := range elev.Requests {
@@ -195,7 +195,7 @@ func updateElevators(elevators []*config.SyncElevator, newElevators []config.Syn
 			if newElev.ID == elevators[LOCAL_ELEVATOR].ID {
 				for floor := range newElev.Requests {
 					for button := range newElev.Requests[floor] {
-						if elevators[LOCAL_ELEVATOR].Behave != config.Behaviour(elevatorStateMachine.UNAVAILABLE) {
+						if elevators[LOCAL_ELEVATOR].Behave != config.Behaviour(config.UNAVAILABLE) {
 							if newElev.Requests[floor][button] == config.Order {
 								(*elevators[LOCAL_ELEVATOR]).Requests[floor][button] = config.Order
 							}

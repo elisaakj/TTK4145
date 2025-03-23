@@ -5,13 +5,9 @@ import (
 	"Driver-go/elevator-system/elevio"
 )
 
-// import (
-// 	. "elevator"
-// )
-
 type DirnBehaviourPair struct {
-	Dirn      elevio.MotorDirection
-	State 	  ElevatorState
+	Dirn  elevio.MotorDirection
+	State config.ElevatorState
 }
 
 func hasRequestsAbove(e Elevator) bool {
@@ -50,30 +46,30 @@ func hasRequestsAtCurrentFloor(e Elevator) bool {
 
 func determineNextDirection(e Elevator) DirnBehaviourPair {
 	if hasRequestsAtCurrentFloor(e) {
-		return DirnBehaviourPair{elevio.DIRN_STOP, DOOR_OPEN}
+		return DirnBehaviourPair{elevio.DIRN_STOP, config.DOOR_OPEN}
 	}
 
 	switch e.Dirn {
 	case elevio.DIRN_UP:
 		if hasRequestsAbove(e) {
-			return DirnBehaviourPair{elevio.DIRN_UP, MOVING}
+			return DirnBehaviourPair{elevio.DIRN_UP, config.MOVING}
 		} else if hasRequestsBelow(e) {
-			return DirnBehaviourPair{elevio.DIRN_DOWN, MOVING}
+			return DirnBehaviourPair{elevio.DIRN_DOWN, config.MOVING}
 		}
 	case elevio.DIRN_DOWN:
 		if hasRequestsBelow(e) {
-			return DirnBehaviourPair{elevio.DIRN_DOWN, MOVING}
+			return DirnBehaviourPair{elevio.DIRN_DOWN, config.MOVING}
 		} else if hasRequestsAbove(e) {
-			return DirnBehaviourPair{elevio.DIRN_UP, MOVING}
+			return DirnBehaviourPair{elevio.DIRN_UP, config.MOVING}
 		}
 	case elevio.DIRN_STOP:
 		if hasRequestsAbove(e) {
-			return DirnBehaviourPair{elevio.DIRN_UP, MOVING}
+			return DirnBehaviourPair{elevio.DIRN_UP, config.MOVING}
 		} else if hasRequestsBelow(e) {
-			return DirnBehaviourPair{elevio.DIRN_DOWN, MOVING}
+			return DirnBehaviourPair{elevio.DIRN_DOWN, config.MOVING}
 		}
 	}
-	return DirnBehaviourPair{elevio.DIRN_STOP, IDLE}
+	return DirnBehaviourPair{elevio.DIRN_STOP, config.IDLE}
 }
 
 func stopAtCurrentFloor(e Elevator) bool {
@@ -92,6 +88,7 @@ func stopAtCurrentFloor(e Elevator) bool {
 	return false
 }
 
+/*
 func clearRequestsImmediately(e Elevator, btnfloor int, btnType elevio.ButtonType) bool {
 	switch e.ClearRequestMode {
 	case CLEAR_ALL:
@@ -100,14 +97,12 @@ func clearRequestsImmediately(e Elevator, btnfloor int, btnType elevio.ButtonTyp
 		return e.Floor == btnfloor && (e.Dirn == elevio.DIRN_UP && btnType == elevio.BUTTON_HALL_UP || e.Dirn == elevio.DIRN_DOWN && btnType == elevio.BUTTON_HALL_DOWN || e.Dirn == elevio.DIRN_STOP || btnType == elevio.BUTTON_CAB)
 	}
 	return false
-}
+}*/
 
-func clearRequestsAtCurrentFloor(e Elevator, numButtons int) Elevator {
-	for btn := 0; btn < numButtons; btn++ {
-		//if e.requests[e.floor][btn] {
+func clearRequestsAtCurrentFloor(e Elevator) Elevator {
+	for btn := 0; btn < config.NUM_BUTTONS; btn++ {
 		e.Requests[e.Floor][btn] = false
 		elevio.SetButtonLamp(elevio.ButtonType(btn), e.Floor, false)
-		//}
 	}
 	return e
 }

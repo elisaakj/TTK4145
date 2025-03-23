@@ -3,14 +3,16 @@ package elevatorStateMachine
 import (
 	"Driver-go/elevator-system/config"
 	"Driver-go/elevator-system/elevio"
-	"fmt"
-	// "time"
 )
 
-// btnFloor int, btnType elevio.ButtonType
+type FsmChannels struct {
+	Elevator       chan Elevator
+	NewOrder       chan elevio.ButtonEvent
+	ArrivedAtFloor chan int
+	Obstruction    chan bool
+}
+
 func handleRequestButtonPress(elevator *Elevator, event elevio.ButtonEvent, ch FsmChannels) {
-	//fmt.Printf("\n\nfsmOnRequestButtonPress(%d, %s)\n", btnFloor, elevioButtonToString(btnType))
-	//elevatorPrint(elevator)
 
 	// if already requested, do nothing
 	if elevator.Requests[event.Floor][event.Button] {
@@ -21,49 +23,39 @@ func handleRequestButtonPress(elevator *Elevator, event elevio.ButtonEvent, ch F
 	elevio.SetButtonLamp(event.Button, event.Floor, true)
 	// elevator.OrderID = (elevator.OrderID + 1) % 1000 need to implement this probably
 
-	elevator.Requests[event.Floor][event.Button] = true
-	elevio.SetButtonLamp(event.Button, event.Floor, true)
-
 	switch elevator.State {
-	case DOOR_OPEN:
+	case config.DOOR_OPEN:
 		if elevator.Floor == event.Floor {
-			timerStart(elevator.DoorOpenDurationS)
-			//go func() { ch.OrderComplete <- event.Floor }()
-			*elevator = clearRequestsAtCurrentFloor(*elevator, int(event.Button))
+			*elevator = clearRequestsAtCurrentFloor(*elevator)
 		}
 
-	case IDLE:
+	case config.IDLE:
 		choice := determineNextDirection(*elevator)
 		elevator.Dirn = choice.Dirn
 		elevator.State = choice.State
 
-		if elevator.State == MOVING {
+		if elevator.State == config.MOVING {
 			elevio.SetMotorDirection(elevator.Dirn)
 		} else {
 			elevio.SetDoorOpenLamp(true)
-			timerStart(elevator.DoorOpenDurationS)
-			//go func() { ch.OrderComplete <- event.Floor }()
-			*elevator = clearRequestsAtCurrentFloor(*elevator, int(event.Button))
+			*elevator = clearRequestsAtCurrentFloor(*elevator)
 		}
 	}
 
 	ch.Elevator <- *elevator
 }
 
-func onFloorArrival(newFloor int, elevator *Elevator, ch FsmChannels, numButtons int) {
-	fmt.Printf("\n\nfsmOnFloorArrival(%d)\n", newFloor)
+func onFloorArrival(newFloor int, elevator *Elevator, ch FsmChannels) {
 	elevator.Floor = newFloor
 	elevio.SetFloorIndicator(newFloor)
 
 	if stopAtCurrentFloor(*elevator) {
 		elevio.SetMotorDirection(elevio.DIRN_STOP)
-		elevator.State = DOOR_OPEN
+		elevator.State = config.DOOR_OPEN
 		elevio.SetDoorOpenLamp(true)
 
-		*elevator = clearRequestsAtCurrentFloor(*elevator, numButtons)
-		timerStart(elevator.DoorOpenDurationS)
+		*elevator = clearRequestsAtCurrentFloor(*elevator)
 
-		//go func() { ch.OrderComplete <- newFloor }()
 	} else {
 		elevio.SetMotorDirection(elevator.Dirn)
 	}
@@ -73,24 +65,21 @@ func onFloorArrival(newFloor int, elevator *Elevator, ch FsmChannels, numButtons
 
 func handleDoorTimeout(elevator *Elevator, ch FsmChannels) {
 	if elevator.Obstructed {
-		timerStart(elevator.DoorOpenDurationS)
 		return
 	}
 
 	if hasRequestsAtCurrentFloor(*elevator) {
-		timerStart(elevator.DoorOpenDurationS)
-		*elevator = clearRequestsAtCurrentFloor(*elevator, config.NUM_BUTTONS)
+		*elevator = clearRequestsAtCurrentFloor(*elevator)
 		return
 	}
 
 	elevio.SetDoorOpenLamp(false)
-	timerStop()
 
 	choice := determineNextDirection(*elevator)
 	elevator.Dirn = choice.Dirn
 	elevator.State = choice.State
 
-	if elevator.State == MOVING {
+	if elevator.State == config.MOVING {
 		elevio.SetMotorDirection(elevator.Dirn)
 	}
 
@@ -100,20 +89,5 @@ func handleDoorTimeout(elevator *Elevator, ch FsmChannels) {
 func handleObstruction(elevator *Elevator, obstruction bool, ch FsmChannels) {
 	elevator.Obstructed = obstruction
 
-	if obstruction {
-		if elevator.State == DOOR_OPEN {
-			timerStart(elevator.DoorOpenDurationS)
-		}
-	} else {
-		handleObstructionCleared(elevator)
-	}
-
 	ch.Elevator <- *elevator
-}
-
-func handleObstructionCleared(elevator *Elevator) {
-
-	if elevator.State == DOOR_OPEN {
-		timerStart(elevator.DoorOpenDurationS)
-	}
 }
