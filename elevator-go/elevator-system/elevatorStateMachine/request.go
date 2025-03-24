@@ -106,3 +106,27 @@ func clearRequestsAtCurrentFloor(e Elevator) Elevator {
 	}
 	return e
 }
+
+
+func clearHallRequestInDirection(e Elevator) Elevator {
+
+	switch e.Dirn {
+	case elevio.DIRN_UP:
+		// Clear UP hall call at this floor if it exists
+		if e.Requests[e.Floor][elevio.BUTTON_HALL_UP] {
+			e.Requests[e.Floor][elevio.BUTTON_HALL_UP] = false
+		}
+	case elevio.DIRN_DOWN:
+		// Clear DOWN hall call at this floor if it exists
+		if e.Requests[e.Floor][elevio.BUTTON_HALL_DOWN] {
+			e.Requests[e.Floor][elevio.BUTTON_HALL_DOWN] = false
+		}
+	}
+
+	// Always clear the cab call at this floor
+	if e.Requests[e.Floor][elevio.BUTTON_CAB] {
+		e.Requests[e.Floor][elevio.BUTTON_CAB] = false
+	}
+
+	return e
+}
