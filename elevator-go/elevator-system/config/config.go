@@ -42,11 +42,16 @@ const (
 	Complete  RequestState = 3
 )
 
+type OrderInfo struct {
+	State   RequestState
+	OrderID int
+}
+
 type SyncElevator struct {
 	ID       string
 	Floor    int
 	Dir      Direction
-	Requests [][]RequestState
-	OrderID  [][]int
+	Requests [][]OrderInfo
+	OrderID  int
 	Behave   Behaviour
 }

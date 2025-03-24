@@ -5,19 +5,18 @@ import (
 	"Driver-go/elevator-system/elevatorManager"
 	"Driver-go/elevator-system/elevatorStateMachine"
 	"Driver-go/elevator-system/elevio"
+	"Driver-go/elevator-system/orderid"
 	"Network-go/network/peers"
 	"fmt"
 	"time"
 )
 
 func syncElevatorInit(id string) config.SyncElevator {
-	requests := make([][]config.RequestState, config.NUM_FLOORS)
-	//orderID := make([][]int, config.NUM_FLOORS)
+	requests := make([][]config.OrderInfo, config.NUM_FLOORS)
 	for floor := range requests {
-		requests[floor] = make([]config.RequestState, config.NUM_BUTTONS)
-		//	orderID[floor] = make([]int, config.NUM_BUTTONS)
+		requests[floor] = make([]config.OrderInfo, config.NUM_BUTTONS)
 	}
-	return config.SyncElevator{Requests: requests /*OrderID: orderID,*/, ID: id, Floor: 0, Behave: config.Behaviour(config.IDLE)}
+	return config.SyncElevator{Requests: requests, ID: id, Floor: 0, Behave: config.Behaviour(config.IDLE)}
 }
 
 func broadcast(elevators []*config.SyncElevator, chTx chan<- []config.SyncElevator) {
@@ -33,22 +32,28 @@ func broadcast(elevators []*config.SyncElevator, chTx chan<- []config.SyncElevat
 func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLocalState chan elevatorStateMachine.Elevator, chMsgFromUDP chan []config.SyncElevator,
 	chMsgToUDP chan []config.SyncElevator, chOrderToLocal chan elevio.ButtonEvent, chPeerUpdate chan peers.PeerUpdate, chClearLocalHallOrders chan bool) {
 
-	var LOCAL_ELEVATOR int
+	// Load persisted OrderID state from file
+	err := orderid.Load()
+	if err != nil {
+		fmt.Println("[OrderID] Warning: Failed to load persistent OrderID store:", err)
+	}
+	orderid.DebugPrint()
+
+	var localElevatorIndex int
 
 	elevators := make([]*config.SyncElevator, 0)
 	localElevator := new(config.SyncElevator)
 	*localElevator = syncElevatorInit(id)
 	elevators = append(elevators, localElevator)
-
-	LOCAL_ELEVATOR = getIndexByID(elevators, id)
+	localElevatorIndex = getIndexByID(elevators, id)
 
 	connectionTimer := time.NewTimer(time.Duration(3) * time.Second)
 	select {
 	case newElevators := <-chMsgFromUDP:
 		for _, elev := range newElevators {
-			if elev.ID == elevators[LOCAL_ELEVATOR].ID {
+			if elev.ID == elevators[localElevatorIndex].ID {
 				for floor := range elev.Requests {
-					if elev.Requests[floor][elevio.BUTTON_CAB] == config.Confirmed || elev.Requests[floor][elevio.BUTTON_CAB] == config.Order {
+					if elev.Requests[floor][elevio.BUTTON_CAB].State == config.Confirmed || elev.Requests[floor][elevio.BUTTON_CAB].State == config.Order {
 						chNewLocalOrder <- elevio.ButtonEvent{
 							Floor:  floor,
 							Button: elevio.ButtonType(elevio.BUTTON_CAB)}
@@ -65,7 +70,11 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 		select {
 		case newOrder := <-chNewLocalOrder:
 			if newOrder.Button == elevio.BUTTON_CAB {
-				elevators[getIndexByID(elevators, id)].Requests[newOrder.Floor][newOrder.Button] = config.Confirmed
+				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button))
+				elevators[getIndexByID(elevators, id)].Requests[newOrder.Floor][newOrder.Button] = config.OrderInfo{
+					State:   config.Confirmed,
+					OrderID: currentID,
+				}
 				chOrderToLocal <- newOrder
 				broadcast(elevators, chMsgToUDP)
 				break
@@ -75,9 +84,12 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 			assignedIdx := elevatorManager.AssignOrders(elevators, newOrder)
 
 			if assignedIdx != -1 {
-				elevators[assignedIdx].Requests[newOrder.Floor][newOrder.Button] = config.Order
-				//elevators[assignedIdx].OrderID[newOrder.Floor][newOrder.Button]++
-				fmt.Printf("Assigned to elevator ID: %s\n", elevators[assignedIdx].ID)
+				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button))
+				elevators[assignedIdx].Requests[newOrder.Floor][newOrder.Button] = config.OrderInfo{
+					State:   config.Order,
+					OrderID: currentID,
+				}
+				fmt.Printf("[ASSIGN] Elevator %s gets (%d,%d) OrderID: %d\n", elevators[assignedIdx].ID, newOrder.Floor, newOrder.Button, currentID)
 				if elevators[assignedIdx].ID == id {
 					chOrderToLocal <- newOrder
 				}
@@ -88,23 +100,23 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 			setHallLights(elevators)
 
 		case newState := <-chNewLocalState:
-			if newState.Floor != elevators[LOCAL_ELEVATOR].Floor ||
+			if newState.Floor != elevators[localElevatorIndex].Floor ||
 				newState.State == config.IDLE ||
 				newState.State == config.DOOR_OPEN {
-				elevators[LOCAL_ELEVATOR].Behave = config.Behaviour(int(newState.State))
-				elevators[LOCAL_ELEVATOR].Floor = newState.Floor
-				elevators[LOCAL_ELEVATOR].Dir = config.Direction(int(newState.Dirn))
+				elevators[localElevatorIndex].Behave = config.Behaviour(int(newState.State))
+				elevators[localElevatorIndex].Floor = newState.Floor
+				elevators[localElevatorIndex].Dir = config.Direction(int(newState.Dirn))
 			}
-			for floor := range elevators[LOCAL_ELEVATOR].Requests {
-				for button := range elevators[LOCAL_ELEVATOR].Requests[floor] {
+			for floor := range elevators[localElevatorIndex].Requests {
+				for button := range elevators[localElevatorIndex].Requests[floor] {
 					if !newState.Requests[floor][button] &&
-						elevators[LOCAL_ELEVATOR].Requests[floor][button] == config.Confirmed {
-						elevators[LOCAL_ELEVATOR].Requests[floor][button] = config.Complete
+						elevators[localElevatorIndex].Requests[floor][button].State == config.Confirmed {
+						elevators[localElevatorIndex].Requests[floor][button].State = config.Complete
 					}
-					if elevators[LOCAL_ELEVATOR].Behave != config.Behaviour(config.UNAVAILABLE) &&
+					if elevators[localElevatorIndex].Behave != config.Behaviour(config.UNAVAILABLE) &&
 						newState.Requests[floor][button] &&
-						elevators[LOCAL_ELEVATOR].Requests[floor][button] != config.Confirmed {
-						elevators[LOCAL_ELEVATOR].Requests[floor][button] = config.Confirmed
+						elevators[localElevatorIndex].Requests[floor][button].State != config.Confirmed {
+						elevators[localElevatorIndex].Requests[floor][button].State = config.Confirmed
 					}
 				}
 			}
@@ -113,23 +125,33 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 			removeCompletedOrders(elevators)
 
 		case newElevators := <-chMsgFromUDP:
-			// need to increment and have orderID do the correct thing here as well
 
-			updateElevators(elevators, newElevators, LOCAL_ELEVATOR)
+			updateElevators(elevators, newElevators, localElevatorIndex)
 			elevatorManager.ReassignOrders(elevators, chNewLocalOrder, id)
 			for _, newElev := range newElevators {
 				elevExist := false
 				for _, elev := range elevators {
 					if elev.ID == newElev.ID {
 						elevExist = true
-						break
+						for f := range elev.Requests {
+							for b := range elev.Requests[f] {
+								if newElev.Requests[f][b].OrderID > elev.Requests[f][b].OrderID {
+									elev.Requests[f][b] = newElev.Requests[f][b]
+									orderid.UpdateIfGreater(f, b, newElev.Requests[f][b].OrderID)
+									fmt.Printf("[SYNC] %s updated (%d,%d) to OrderID %d\n", elev.ID, f, b, newElev.Requests[f][b].OrderID)
+								}
+							}
+						}
+						elev.Floor = newElev.Floor
+						elev.Dir = newElev.Dir
+						elev.Behave = newElev.Behave
 					}
 				}
 				if !elevExist {
 					addNewElevator(&elevators, newElev)
 				}
 			}
-			extractNewOrder := comfirmNewOrder(elevators[LOCAL_ELEVATOR])
+			extractNewOrder := comfirmNewOrder(elevators[localElevatorIndex])
 			setHallLights(elevators)
 			removeCompletedOrders(elevators)
 			if extractNewOrder != nil {
@@ -150,7 +172,7 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 						elevatorManager.ReassignOrders(elevators, chNewLocalOrder, id)
 						for floor := range elev.Requests {
 							for button := 0; button < len(elev.Requests[floor])-1; button++ {
-								elev.Requests[floor][button] = config.None
+								elev.Requests[floor][button].State = config.None
 							}
 						}
 					}
@@ -166,8 +188,8 @@ func removeCompletedOrders(elevators []*config.SyncElevator) {
 	for _, elev := range elevators {
 		for floor := range elev.Requests {
 			for button := range elev.Requests[floor] {
-				if elev.Requests[floor][button] == config.Complete {
-					elev.Requests[floor][button] = config.None
+				if elev.Requests[floor][button].State == config.Complete {
+					elev.Requests[floor][button].State = config.None
 				}
 			}
 		}
@@ -175,29 +197,29 @@ func removeCompletedOrders(elevators []*config.SyncElevator) {
 }
 
 // Updates local elevator array from received elevator array from network
-func updateElevators(elevators []*config.SyncElevator, newElevators []config.SyncElevator, LOCAL_ELEVATOR int) {
-	if elevators[LOCAL_ELEVATOR].ID != newElevators[LOCAL_ELEVATOR].ID {
+func updateElevators(elevators []*config.SyncElevator, newElevators []config.SyncElevator, localElevatorIndex int) {
+	if elevators[localElevatorIndex].ID != newElevators[localElevatorIndex].ID {
 		for _, elev := range elevators {
-			if elev.ID == newElevators[LOCAL_ELEVATOR].ID {
+			if elev.ID == newElevators[localElevatorIndex].ID {
 				for floor := range elev.Requests {
 					for button := range elev.Requests[floor] {
-						if !(elev.Requests[floor][button] == config.Confirmed && newElevators[LOCAL_ELEVATOR].Requests[floor][button] == config.Order) {
-							elev.Requests[floor][button] = newElevators[LOCAL_ELEVATOR].Requests[floor][button]
+						if !(elev.Requests[floor][button].State == config.Confirmed && newElevators[localElevatorIndex].Requests[floor][button].State == config.Order) {
+							elev.Requests[floor][button] = newElevators[localElevatorIndex].Requests[floor][button]
 						}
-						elev.Floor = newElevators[LOCAL_ELEVATOR].Floor
-						elev.Dir = newElevators[LOCAL_ELEVATOR].Dir
-						elev.Behave = newElevators[LOCAL_ELEVATOR].Behave
+						elev.Floor = newElevators[localElevatorIndex].Floor
+						elev.Dir = newElevators[localElevatorIndex].Dir
+						elev.Behave = newElevators[localElevatorIndex].Behave
 					}
 				}
 			}
 		}
 		for _, newElev := range newElevators {
-			if newElev.ID == elevators[LOCAL_ELEVATOR].ID {
+			if newElev.ID == elevators[localElevatorIndex].ID {
 				for floor := range newElev.Requests {
 					for button := range newElev.Requests[floor] {
-						if elevators[LOCAL_ELEVATOR].Behave != config.Behaviour(config.UNAVAILABLE) {
-							if newElev.Requests[floor][button] == config.Order {
-								(*elevators[LOCAL_ELEVATOR]).Requests[floor][button] = config.Order
+						if elevators[localElevatorIndex].Behave != config.Behaviour(config.UNAVAILABLE) {
+							if newElev.Requests[floor][button].State == config.Order {
+								(*elevators[localElevatorIndex]).Requests[floor][button].State = config.Order
 							}
 						}
 					}
@@ -225,8 +247,8 @@ func addNewElevator(elevators *[]*config.SyncElevator, newElevator config.SyncEl
 func comfirmNewOrder(elev *config.SyncElevator) *elevio.ButtonEvent {
 	for floor := range elev.Requests {
 		for button := 0; button < len(elev.Requests[floor]); button++ {
-			if elev.Requests[floor][button] == config.Order {
-				elev.Requests[floor][button] = config.Confirmed
+			if elev.Requests[floor][button].State == config.Order {
+				elev.Requests[floor][button].State = config.Confirmed
 				tempOrder := new(elevio.ButtonEvent)
 				*tempOrder = elevio.ButtonEvent{
 					Floor:  floor,
@@ -243,7 +265,7 @@ func setHallLights(elevators []*config.SyncElevator) {
 		for floor := 0; floor < config.NUM_FLOORS; floor++ {
 			isLightOn := false
 			for _, elev := range elevators {
-				if elev.Requests[floor][button] == config.Confirmed || elev.Requests[floor][button] == config.Order {
+				if elev.Requests[floor][button].State == config.Confirmed || elev.Requests[floor][button].State == config.Order {
 					isLightOn = true
 				}
 			}

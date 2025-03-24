@@ -21,7 +21,7 @@ func AssignOrders(elevators []*config.SyncElevator, newOrder elevio.ButtonEvent)
 	}
 
 	if bestElevIndex != -1 {
-		elevators[bestElevIndex].Requests[newOrder.Floor][newOrder.Button] = config.Order
+		elevators[bestElevIndex].Requests[newOrder.Floor][newOrder.Button].State = config.Order
 	}
 	return bestElevIndex
 }
@@ -33,7 +33,7 @@ func ReassignOrders(elevators []*config.SyncElevator, chNewLocalOrder chan<- ele
 		}
 		for floor := 0; floor < config.NUM_FLOORS; floor++ {
 			for button := 0; button < config.NUM_BUTTONS-1; button++ {
-				if elev.Requests[floor][button] == config.Order || elev.Requests[floor][button] == config.Confirmed {
+				if elev.Requests[floor][button].State == config.Order || elev.Requests[floor][button].State == config.Confirmed {
 					newOrder := elevio.ButtonEvent{
 						Floor:  floor,
 						Button: elevio.ButtonType(button),
@@ -41,13 +41,13 @@ func ReassignOrders(elevators []*config.SyncElevator, chNewLocalOrder chan<- ele
 					assignedIdx := AssignOrders(elevators, newOrder)
 
 					if assignedIdx != -1 {
-						elevators[assignedIdx].Requests[floor][button] = config.Order
+						elevators[assignedIdx].Requests[floor][button].State = config.Order
 						if elevators[assignedIdx].ID == localElevID { // local elevator ID
 							chNewLocalOrder <- newOrder
 						}
 					}
 					// Clear order freom unavailable elevator
-					elev.Requests[floor][button] = config.None
+					elev.Requests[floor][button].State = config.None
 				}
 			}
 		}
