@@ -27,9 +27,9 @@ func main() {
 	}
 
 	//simFromHome := "172.26.129.47:20101"
-	addr := fmt.Sprintf("172.26.129.47:%d", config.BASE_PORT+idInt)
+	//addr := fmt.Sprintf("172.26.129.47:%d", config.BASE_PORT+idInt)
 	//simFromHome := "localhost:15657"
-	//ddr := fmt.Sprintf("localhost:%d", config.BASE_PORT+idInt)
+	addr := fmt.Sprintf("localhost:%d", config.BASE_PORT+idInt)
 	elevio.Init(addr, config.NUM_FLOORS)
 
 	// channels for syncElev
@@ -64,8 +64,8 @@ func main() {
 
 	go bcast.Transmitter(20100, chMsgToUDP)
 	go bcast.Receiver(20100, chMsgFromUDP)
-	go peers.Transmitter(15647, id, chPeerTx)
-	go peers.Receiver(15647, chPeerUpdate)
+	go peers.Transmitter(20200, id, chPeerTx)
+	go peers.Receiver(20200, chPeerUpdate)
 
 	go syncElev.SyncElevators(id, chNewLocalOrder, chNewLocalState, chMsgFromUDP, chMsgToUDP,
 		chOrderToLocal, chPeerUpdate, chClearLocalHallOrders)
