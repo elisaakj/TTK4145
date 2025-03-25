@@ -68,14 +68,11 @@ func handleDoorTimeout(elevator *Elevator, ch FsmChannels) {
 		return
 	}
 
-	*elevator = handleRequestsAndMaybeReverse(*elevator)
 
-	// Above function does the portion below - delete if needed
-
-	// if hasRequestsAtCurrentFloor(*elevator) {
-	// 	*elevator = clearRequestsAtCurrentFloor(*elevator)
-	// 	return
-	// }
+	if hasRequestsAtCurrentFloor(*elevator) {
+		*elevator = clearHallRequestInDirection(*elevator)
+		return
+	}
 
 	elevio.SetDoorOpenLamp(false)
 
