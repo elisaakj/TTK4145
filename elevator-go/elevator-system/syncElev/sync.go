@@ -28,161 +28,161 @@ func broadcast(elevators []*config.SyncElevator, chTx chan<- []config.SyncElevat
 	time.Sleep(100 * time.Millisecond)
 }
 
-// call function as goroutine in main, sending to network, reciving from network to sync
-func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLocalState chan elevatorStateMachine.Elevator, chMsgFromUDP chan []config.SyncElevator,
-	chMsgToUDP chan []config.SyncElevator, chOrderToLocal chan elevio.ButtonEvent, chPeerUpdate chan peers.PeerUpdate, chClearLocalHallOrders chan bool) {
+// // call function as goroutine in main, sending to network, reciving from network to sync
+// func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLocalState chan elevatorStateMachine.Elevator, chMsgFromUDP chan []config.SyncElevator,
+// 	chMsgToUDP chan []config.SyncElevator, chOrderToLocal chan elevio.ButtonEvent, chPeerUpdate chan peers.PeerUpdate, chClearLocalHallOrders chan bool) {
 
-	// Load persisted OrderID state from file
-	err := orderid.Load()
-	if err != nil {
-		fmt.Println("[OrderID] Warning: Failed to load persistent OrderID store:", err)
-	}
-	orderid.DebugPrint()
+// 	// Load persisted OrderID state from file
+// 	err := orderid.Load()
+// 	if err != nil {
+// 		fmt.Println("[OrderID] Warning: Failed to load persistent OrderID store:", err)
+// 	}
+// 	orderid.DebugPrint()
 
-	var localElevatorIndex int
+// 	var localElevatorIndex int
 
-	elevators := make([]*config.SyncElevator, 0)
-	localElevator := new(config.SyncElevator)
-	*localElevator = syncElevatorInit(id)
-	elevators = append(elevators, localElevator)
-	localElevatorIndex = getIndexByID(elevators, id)
+// 	elevators := make([]*config.SyncElevator, 0)
+// 	localElevator := new(config.SyncElevator)
+// 	*localElevator = syncElevatorInit(id)
+// 	elevators = append(elevators, localElevator)
+// 	localElevatorIndex = getIndexByID(elevators, id)
 
-	connectionTimer := time.NewTimer(time.Duration(3) * time.Second)
-	select {
-	case newElevators := <-chMsgFromUDP:
-		for _, elev := range newElevators {
-			if elev.ID == elevators[localElevatorIndex].ID {
-				for floor := range elev.Requests {
-					if elev.Requests[floor][elevio.BUTTON_CAB].State == config.Confirmed || elev.Requests[floor][elevio.BUTTON_CAB].State == config.Order {
-						chNewLocalOrder <- elevio.ButtonEvent{
-							Floor:  floor,
-							Button: elevio.ButtonType(elevio.BUTTON_CAB)}
-					}
-				}
-			}
-		}
-		break
-	case <-connectionTimer.C:
-		break
-	}
+// 	connectionTimer := time.NewTimer(time.Duration(3) * time.Second)
+// 	select {
+// 	case newElevators := <-chMsgFromUDP:
+// 		for _, elev := range newElevators {
+// 			if elev.ID == elevators[localElevatorIndex].ID {
+// 				for floor := range elev.Requests {
+// 					if elev.Requests[floor][elevio.BUTTON_CAB].State == config.Confirmed || elev.Requests[floor][elevio.BUTTON_CAB].State == config.Order {
+// 						chNewLocalOrder <- elevio.ButtonEvent{
+// 							Floor:  floor,
+// 							Button: elevio.ButtonType(elevio.BUTTON_CAB)}
+// 					}
+// 				}
+// 			}
+// 		}
+// 		break
+// 	case <-connectionTimer.C:
+// 		break
+// 	}
 
-	for {
-		select {
-		case newOrder := <-chNewLocalOrder:
-			if newOrder.Button == elevio.BUTTON_CAB {
-				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button))
-				elevators[getIndexByID(elevators, id)].Requests[newOrder.Floor][newOrder.Button] = config.OrderInfo{
-					State:   config.Confirmed,
-					OrderID: currentID,
-				}
-				chOrderToLocal <- newOrder
-				broadcast(elevators, chMsgToUDP)
-				break
-			}
+// 	for {
+// 		select {
+// 		case newOrder := <-chNewLocalOrder:
+// 			if newOrder.Button == elevio.BUTTON_CAB {
+// 				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button))
+// 				elevators[getIndexByID(elevators, id)].Requests[newOrder.Floor][newOrder.Button] = config.OrderInfo{
+// 					State:   config.Confirmed,
+// 					OrderID: currentID,
+// 				}
+// 				chOrderToLocal <- newOrder
+// 				broadcast(elevators, chMsgToUDP)
+// 				break
+// 			}
 
-			fmt.Printf("Assigning hall call: Floor %d, Button %v\n", newOrder.Floor, newOrder.Button)
-			assignedIdx := elevatorManager.AssignOrders(elevators, newOrder)
+// 			fmt.Printf("Assigning hall call: Floor %d, Button %v\n", newOrder.Floor, newOrder.Button)
+// 			assignedIdx := elevatorManager.AssignOrders(elevators, newOrder)
 
-			if assignedIdx != -1 {
-				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button))
-				elevators[assignedIdx].Requests[newOrder.Floor][newOrder.Button] = config.OrderInfo{
-					State:   config.Order,
-					OrderID: currentID,
-				}
-				fmt.Printf("[ASSIGN] Elevator %s gets (%d,%d) OrderID: %d\n", elevators[assignedIdx].ID, newOrder.Floor, newOrder.Button, currentID)
-				if elevators[assignedIdx].ID == id {
-					chOrderToLocal <- newOrder
-				}
-				broadcast(elevators, chMsgToUDP)
-			} else {
-				fmt.Println("Warning: No elevator available to assign order")
-			}
-			setHallLights(elevators)
+// 			if assignedIdx != -1 {
+// 				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button))
+// 				elevators[assignedIdx].Requests[newOrder.Floor][newOrder.Button] = config.OrderInfo{
+// 					State:   config.Order,
+// 					OrderID: currentID,
+// 				}
+// 				fmt.Printf("[ASSIGN] Elevator %s gets (%d,%d) OrderID: %d\n", elevators[assignedIdx].ID, newOrder.Floor, newOrder.Button, currentID)
+// 				if elevators[assignedIdx].ID == id {
+// 					chOrderToLocal <- newOrder
+// 				}
+// 				broadcast(elevators, chMsgToUDP)
+// 			} else {
+// 				fmt.Println("Warning: No elevator available to assign order")
+// 			}
+// 			setHallLights(elevators)
 
-		case newState := <-chNewLocalState:
-			if newState.Floor != elevators[localElevatorIndex].Floor ||
-				newState.State == config.IDLE ||
-				newState.State == config.DOOR_OPEN {
-				elevators[localElevatorIndex].Behave = config.Behaviour(int(newState.State))
-				elevators[localElevatorIndex].Floor = newState.Floor
-				elevators[localElevatorIndex].Dir = config.Direction(int(newState.Dirn))
-			}
-			for floor := range elevators[localElevatorIndex].Requests {
-				for button := range elevators[localElevatorIndex].Requests[floor] {
-					if !newState.Requests[floor][button] &&
-						elevators[localElevatorIndex].Requests[floor][button].State == config.Confirmed {
-						elevators[localElevatorIndex].Requests[floor][button].State = config.Complete
-					}
-					if elevators[localElevatorIndex].Behave != config.Behaviour(config.UNAVAILABLE) &&
-						newState.Requests[floor][button] &&
-						elevators[localElevatorIndex].Requests[floor][button].State != config.Confirmed {
-						elevators[localElevatorIndex].Requests[floor][button].State = config.Confirmed
-					}
-				}
-			}
-			setHallLights(elevators)
-			broadcast(elevators, chMsgToUDP)
-			removeCompletedOrders(elevators)
+// 		case newState := <-chNewLocalState:
+// 			if newState.Floor != elevators[localElevatorIndex].Floor ||
+// 				newState.State == config.IDLE ||
+// 				newState.State == config.DOOR_OPEN {
+// 				elevators[localElevatorIndex].Behave = config.Behaviour(int(newState.State))
+// 				elevators[localElevatorIndex].Floor = newState.Floor
+// 				elevators[localElevatorIndex].Dir = config.Direction(int(newState.Dirn))
+// 			}
+// 			for floor := range elevators[localElevatorIndex].Requests {
+// 				for button := range elevators[localElevatorIndex].Requests[floor] {
+// 					if !newState.Requests[floor][button] &&
+// 						elevators[localElevatorIndex].Requests[floor][button].State == config.Confirmed {
+// 						elevators[localElevatorIndex].Requests[floor][button].State = config.Complete
+// 					}
+// 					if elevators[localElevatorIndex].Behave != config.Behaviour(config.UNAVAILABLE) &&
+// 						newState.Requests[floor][button] &&
+// 						elevators[localElevatorIndex].Requests[floor][button].State != config.Confirmed {
+// 						elevators[localElevatorIndex].Requests[floor][button].State = config.Confirmed
+// 					}
+// 				}
+// 			}
+// 			setHallLights(elevators)
+// 			broadcast(elevators, chMsgToUDP)
+// 			removeCompletedOrders(elevators)
 
-		case newElevators := <-chMsgFromUDP:
+// 		case newElevators := <-chMsgFromUDP:
 
-			updateElevators(elevators, newElevators, localElevatorIndex)
-			elevatorManager.ReassignOrders(elevators, chNewLocalOrder, id)
-			for _, newElev := range newElevators {
-				elevExist := false
-				for _, elev := range elevators {
-					if elev.ID == newElev.ID {
-						elevExist = true
-						for f := range elev.Requests {
-							for b := range elev.Requests[f] {
-								if newElev.Requests[f][b].OrderID > elev.Requests[f][b].OrderID {
-									elev.Requests[f][b] = newElev.Requests[f][b]
-									orderid.UpdateIfGreater(f, b, newElev.Requests[f][b].OrderID)
-									fmt.Printf("[SYNC] %s updated (%d,%d) to OrderID %d\n", elev.ID, f, b, newElev.Requests[f][b].OrderID)
-								}
-							}
-						}
-						elev.Floor = newElev.Floor
-						elev.Dir = newElev.Dir
-						elev.Behave = newElev.Behave
-					}
-				}
-				if !elevExist {
-					addNewElevator(&elevators, newElev)
-				}
-			}
-			extractNewOrder := comfirmNewOrder(elevators[localElevatorIndex])
-			setHallLights(elevators)
-			removeCompletedOrders(elevators)
-			if extractNewOrder != nil {
-				tempOrder := elevio.ButtonEvent{
-					Button: elevio.ButtonType(extractNewOrder.Button),
-					Floor:  extractNewOrder.Floor}
-				chOrderToLocal <- tempOrder
-				broadcast(elevators, chMsgToUDP)
-			}
+// 			updateElevators(elevators, newElevators, localElevatorIndex)
+// 			elevatorManager.ReassignOrders(elevators, chNewLocalOrder, id)
+// 			for _, newElev := range newElevators {
+// 				elevExist := false
+// 				for _, elev := range elevators {
+// 					if elev.ID == newElev.ID {
+// 						elevExist = true
+// 						for f := range elev.Requests {
+// 							for b := range elev.Requests[f] {
+// 								if newElev.Requests[f][b].OrderID > elev.Requests[f][b].OrderID {
+// 									elev.Requests[f][b] = newElev.Requests[f][b]
+// 									orderid.UpdateIfGreater(f, b, newElev.Requests[f][b].OrderID)
+// 									fmt.Printf("[SYNC] %s updated (%d,%d) to OrderID %d\n", elev.ID, f, b, newElev.Requests[f][b].OrderID)
+// 								}
+// 							}
+// 						}
+// 						elev.Floor = newElev.Floor
+// 						elev.Dir = newElev.Dir
+// 						elev.Behave = newElev.Behave
+// 					}
+// 				}
+// 				if !elevExist {
+// 					addNewElevator(&elevators, newElev)
+// 				}
+// 			}
+// 			extractNewOrder := comfirmNewOrder(elevators[localElevatorIndex])
+// 			setHallLights(elevators)
+// 			removeCompletedOrders(elevators)
+// 			if extractNewOrder != nil {
+// 				tempOrder := elevio.ButtonEvent{
+// 					Button: elevio.ButtonType(extractNewOrder.Button),
+// 					Floor:  extractNewOrder.Floor}
+// 				chOrderToLocal <- tempOrder
+// 				broadcast(elevators, chMsgToUDP)
+// 			}
 
-		case peer := <-chPeerUpdate:
-			if len(peer.Lost) != 0 {
-				for _, stringLostID := range peer.Lost {
-					for _, elev := range elevators {
-						if stringLostID == elev.ID {
-							elev.Behave = config.Behaviour(config.UNAVAILABLE)
-						}
-						elevatorManager.ReassignOrders(elevators, chNewLocalOrder, id)
-						for floor := range elev.Requests {
-							for button := 0; button < len(elev.Requests[floor])-1; button++ {
-								elev.Requests[floor][button].State = config.None
-							}
-						}
-					}
-				}
-			}
-			setHallLights(elevators)
-			broadcast(elevators, chMsgToUDP)
-		}
-	}
-}
+// 		case peer := <-chPeerUpdate:
+// 			if len(peer.Lost) != 0 {
+// 				for _, stringLostID := range peer.Lost {
+// 					for _, elev := range elevators {
+// 						if stringLostID == elev.ID {
+// 							elev.Behave = config.Behaviour(config.UNAVAILABLE)
+// 						}
+// 						elevatorManager.ReassignOrders(elevators, chNewLocalOrder, id)
+// 						for floor := range elev.Requests {
+// 							for button := 0; button < len(elev.Requests[floor])-1; button++ {
+// 								elev.Requests[floor][button].State = config.None
+// 							}
+// 						}
+// 					}
+// 				}
+// 			}
+// 			setHallLights(elevators)
+// 			broadcast(elevators, chMsgToUDP)
+// 		}
+// 	}
+// }
 
 func removeCompletedOrders(elevators []*config.SyncElevator) {
 	for _, elev := range elevators {
@@ -281,4 +281,193 @@ func getIndexByID(elevators []*config.SyncElevator, id string) int {
 		}
 	}
 	return -1
+}
+
+
+
+// call function as goroutine in main, sending to network, reciving from network to sync
+func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLocalState chan elevatorStateMachine.Elevator, chMsgFromUDP chan []config.SyncElevator,
+	chMsgToUDP chan []config.SyncElevator, chOrderToLocal chan elevio.ButtonEvent, chPeerUpdate chan peers.PeerUpdate, chClearLocalHallOrders chan bool) {
+
+	// Load persisted OrderID state from file
+	err := orderid.Load()
+	if err != nil {
+		fmt.Println("[OrderID] Warning: Failed to load persistent OrderID store:", err)
+	}
+	orderid.DebugPrint()
+
+	var localElevatorIndex int
+
+	elevators := make([]*config.SyncElevator, 0)
+	localElevator := new(config.SyncElevator)
+	*localElevator = syncElevatorInit(id)
+	elevators = append(elevators, localElevator)
+	localElevatorIndex = getIndexByID(elevators, id)
+
+	connectionTimer := time.NewTimer(time.Duration(3) * time.Second)
+	select {
+	case newElevators := <-chMsgFromUDP:
+		for _, elev := range newElevators {
+			if elev.ID == elevators[localElevatorIndex].ID {
+				for floor := range elev.Requests {
+					if elev.Requests[floor][elevio.BUTTON_CAB].State == config.Confirmed || elev.Requests[floor][elevio.BUTTON_CAB].State == config.Order {
+						chNewLocalOrder <- elevio.ButtonEvent{
+							Floor:  floor,
+							Button: elevio.ButtonType(elevio.BUTTON_CAB)}
+					}
+				}
+			}
+		}
+		break
+	case <-connectionTimer.C:
+		break
+	}
+
+	for {
+		select {
+		case newOrder := <-chNewLocalOrder:
+			if newOrder.Button == elevio.BUTTON_CAB {
+				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button))
+				elevators[getIndexByID(elevators, id)].Requests[newOrder.Floor][newOrder.Button] = config.OrderInfo{
+					State:   config.Confirmed,
+					OrderID: currentID,
+				}
+				chOrderToLocal <- newOrder
+				broadcast(elevators, chMsgToUDP)
+				break
+			}
+
+			fmt.Printf("Assigning hall call: Floor %d, Button %v\n", newOrder.Floor, newOrder.Button)
+
+			assignedIdx := elevatorManager.AssignOrders(elevators, newOrder, "")
+
+			if assignedIdx != -1 {
+				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button))
+				elevators[assignedIdx].Requests[newOrder.Floor][newOrder.Button] = config.OrderInfo{
+					State:   config.Order,
+					OrderID: currentID,
+				}
+				fmt.Printf("[ASSIGN] Elevator %s gets (%d,%d) OrderID: %d\n", elevators[assignedIdx].ID, newOrder.Floor, newOrder.Button, currentID)
+				if elevators[assignedIdx].ID == id {
+					chOrderToLocal <- newOrder
+				}
+
+				// Try assigning opposite hall call if it exists
+				if newOrder.Button == elevio.BUTTON_HALL_UP || newOrder.Button == elevio.BUTTON_HALL_DOWN {
+					oppositeButton := elevio.BUTTON_HALL_DOWN
+					if newOrder.Button == elevio.BUTTON_HALL_DOWN {
+						oppositeButton = elevio.BUTTON_HALL_UP
+					}
+
+					oppState := elevators[assignedIdx].Requests[newOrder.Floor][oppositeButton].State
+					if oppState == config.Order || oppState == config.Confirmed {
+						assignedOpp := elevatorManager.AssignOrders(elevators, elevio.ButtonEvent{
+							Floor:  newOrder.Floor,
+							Button: oppositeButton,
+						}, elevators[assignedIdx].ID)
+
+						if assignedOpp != -1 && assignedOpp != assignedIdx {
+							currentID := orderid.IncrementAndGet(newOrder.Floor, int(oppositeButton))
+							elevators[assignedOpp].Requests[newOrder.Floor][oppositeButton] = config.OrderInfo{
+								State:   config.Order,
+								OrderID: currentID,
+							}
+							fmt.Printf("[ASSIGN] Elevator %s gets (%d,%d) OrderID: %d\n", elevators[assignedOpp].ID, newOrder.Floor, oppositeButton, currentID)
+							if elevators[assignedOpp].ID == id {
+								chOrderToLocal <- elevio.ButtonEvent{Floor: newOrder.Floor, Button: oppositeButton}
+							}
+						}
+					}
+				}
+
+				broadcast(elevators, chMsgToUDP)
+			} else {
+				fmt.Println("Warning: No elevator available to assign order")
+			}
+
+			setHallLights(elevators)
+
+		case newState := <-chNewLocalState:
+			if newState.Floor != elevators[localElevatorIndex].Floor ||
+				newState.State == config.IDLE ||
+				newState.State == config.DOOR_OPEN {
+				elevators[localElevatorIndex].Behave = config.Behaviour(int(newState.State))
+				elevators[localElevatorIndex].Floor = newState.Floor
+				elevators[localElevatorIndex].Dir = config.Direction(int(newState.Dirn))
+			}
+			for floor := range elevators[localElevatorIndex].Requests {
+				for button := range elevators[localElevatorIndex].Requests[floor] {
+					if !newState.Requests[floor][button] &&
+						elevators[localElevatorIndex].Requests[floor][button].State == config.Confirmed {
+						elevators[localElevatorIndex].Requests[floor][button].State = config.Complete
+					}
+					if elevators[localElevatorIndex].Behave != config.Behaviour(config.UNAVAILABLE) &&
+						newState.Requests[floor][button] &&
+						elevators[localElevatorIndex].Requests[floor][button].State != config.Confirmed {
+						elevators[localElevatorIndex].Requests[floor][button].State = config.Confirmed
+					}
+				}
+			}
+			setHallLights(elevators)
+			broadcast(elevators, chMsgToUDP)
+			removeCompletedOrders(elevators)
+
+		case newElevators := <-chMsgFromUDP:
+
+			updateElevators(elevators, newElevators, localElevatorIndex)
+			elevatorManager.ReassignOrders(elevators, chNewLocalOrder, id)
+			for _, newElev := range newElevators {
+				elevExist := false
+				for _, elev := range elevators {
+					if elev.ID == newElev.ID {
+						elevExist = true
+						for f := range elev.Requests {
+							for b := range elev.Requests[f] {
+								if newElev.Requests[f][b].OrderID > elev.Requests[f][b].OrderID {
+									elev.Requests[f][b] = newElev.Requests[f][b]
+									orderid.UpdateIfGreater(f, b, newElev.Requests[f][b].OrderID)
+									fmt.Printf("[SYNC] %s updated (%d,%d) to OrderID %d\n", elev.ID, f, b, newElev.Requests[f][b].OrderID)
+								}
+							}
+						}
+						elev.Floor = newElev.Floor
+						elev.Dir = newElev.Dir
+						elev.Behave = newElev.Behave
+					}
+				}
+				if !elevExist {
+					addNewElevator(&elevators, newElev)
+				}
+			}
+			extractNewOrder := comfirmNewOrder(elevators[localElevatorIndex])
+			setHallLights(elevators)
+			removeCompletedOrders(elevators)
+			if extractNewOrder != nil {
+				tempOrder := elevio.ButtonEvent{
+					Button: elevio.ButtonType(extractNewOrder.Button),
+					Floor:  extractNewOrder.Floor}
+				chOrderToLocal <- tempOrder
+				broadcast(elevators, chMsgToUDP)
+			}
+
+		case peer := <-chPeerUpdate:
+			if len(peer.Lost) != 0 {
+				for _, stringLostID := range peer.Lost {
+					for _, elev := range elevators {
+						if stringLostID == elev.ID {
+							elev.Behave = config.Behaviour(config.UNAVAILABLE)
+						}
+						elevatorManager.ReassignOrders(elevators, chNewLocalOrder, id)
+						for floor := range elev.Requests {
+							for button := 0; button < len(elev.Requests[floor])-1; button++ {
+								elev.Requests[floor][button].State = config.None
+							}
+						}
+					}
+				}
+			}
+			setHallLights(elevators)
+			broadcast(elevators, chMsgToUDP)
+		}
+	}
 }
