@@ -102,12 +102,18 @@ func clearHallRequestInDirection(e Elevator) Elevator {
 			elevio.SetButtonLamp(elevio.BUTTON_HALL_DOWN, e.Floor, false)
 		}
 	case elevio.DIRN_STOP:
-		// When idle, clear both possible hall calls at this floor
-		if e.Requests[e.Floor][elevio.BUTTON_HALL_UP] {
+		// Clear only one hall call based on future direction preference
+		if hasRequestsAbove(e) && e.Requests[e.Floor][elevio.BUTTON_HALL_UP] {
 			e.Requests[e.Floor][elevio.BUTTON_HALL_UP] = false
 			elevio.SetButtonLamp(elevio.BUTTON_HALL_UP, e.Floor, false)
-		}
-		if e.Requests[e.Floor][elevio.BUTTON_HALL_DOWN] {
+		} else if hasRequestsBelow(e) && e.Requests[e.Floor][elevio.BUTTON_HALL_DOWN] {
+			e.Requests[e.Floor][elevio.BUTTON_HALL_DOWN] = false
+			elevio.SetButtonLamp(elevio.BUTTON_HALL_DOWN, e.Floor, false)
+		} else if e.Requests[e.Floor][elevio.BUTTON_HALL_UP] {
+			// fallback
+			e.Requests[e.Floor][elevio.BUTTON_HALL_UP] = false
+			elevio.SetButtonLamp(elevio.BUTTON_HALL_UP, e.Floor, false)
+		} else if e.Requests[e.Floor][elevio.BUTTON_HALL_DOWN] {
 			e.Requests[e.Floor][elevio.BUTTON_HALL_DOWN] = false
 			elevio.SetButtonLamp(elevio.BUTTON_HALL_DOWN, e.Floor, false)
 		}

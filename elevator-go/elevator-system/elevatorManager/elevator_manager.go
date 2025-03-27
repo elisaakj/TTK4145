@@ -22,7 +22,7 @@ func AssignOrders(elevators []*config.SyncElevator, newOrder elevio.ButtonEvent,
 
 		score := costFunction(elev, newOrder)
 		if elev.ID == excludeID {
-			score += 5 // discourage assigning to the same elevator again
+			score += 8 // discourage assigning to the same elevator again
 		}
 
 		if score < bestScore {
@@ -90,28 +90,77 @@ func abs(a int) int {
 	return a
 }
 
+// func costFunction(elev *config.SyncElevator, order elevio.ButtonEvent) int {
+// 	distance := abs(elev.Floor - order.Floor)
+// 	cost := distance
+
+// 	// Penalize elevators currently moving
+// 	if config.ElevatorState(elev.Behave) == config.MOVING {
+// 		cost += 2
+// 	}
+
+// 	// Penalize elevators going in the wrong direction
+// 	if (elev.Dirn == config.Up && order.Floor < elev.Floor) ||
+// 		(elev.Dirn == config.Down && order.Floor > elev.Floor) {
+// 		cost += 4
+// 	}
+
+// 	// Slight bonus for being idle on same floor
+// 	if config.ElevatorState(elev.Behave) == config.IDLE && elev.Floor == order.Floor {
+// 		cost -= 1
+// 	}
+
+// 	return cost
+// }
+
 func costFunction(elev *config.SyncElevator, order elevio.ButtonEvent) int {
 	distance := abs(elev.Floor - order.Floor)
 	cost := distance
 
-	// Penalize elevators currently moving
+	// Penalize if moving
 	if config.ElevatorState(elev.Behave) == config.MOVING {
 		cost += 2
 	}
 
-	// Penalize elevators going in the wrong direction
+	// Penalize if moving in wrong direction
 	if (elev.Dirn == config.Up && order.Floor < elev.Floor) ||
 		(elev.Dirn == config.Down && order.Floor > elev.Floor) {
-		cost += 4
+		cost += 3
 	}
 
-	// Slight bonus for being idle on same floor
+	// Reward for being idle (even if not at the same floor)
+	if config.ElevatorState(elev.Behave) == config.IDLE {
+		cost -= 2
+	}
+
+	// Small bonus if idle and at the correct floor
 	if config.ElevatorState(elev.Behave) == config.IDLE && elev.Floor == order.Floor {
 		cost -= 1
 	}
 
+	// NEW: Add penalty if elevator already has multiple active orders
+	activeCount := 0
+	for f := 0; f < config.NUM_FLOORS; f++ {
+		for b := 0; b < config.NUM_BUTTONS-1; b++ {
+			if elev.Requests[f][b].State == config.Order || elev.Requests[f][b].State == config.Confirmed {
+				activeCount++
+			}
+		}
+	}
+	cost += activeCount
+
 	return cost
 }
+
+
+
+
+
+
+
+
+
+
 
 /*
 func costFunction(elev *config.SyncElevator, order elevio.ButtonEvent) int {
