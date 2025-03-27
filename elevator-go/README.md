@@ -23,5 +23,7 @@ Here, the id X must match the port assigned to the elevator/simulator.
 ## Group 58
 
 Anders Brungot Sandvik
+
 Benjamin Fernandez
+
 Elisa Amanda Kjønigsen
