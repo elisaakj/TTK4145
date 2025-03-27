@@ -57,7 +57,7 @@ func RunElevator(ch FsmChannels, id int) {
 	stuckTimer.Stop()
 	stuckTimerRunning := false
 
-	obstructionTimer := time.NewTicker(time.Duration(config.OBSTRUCTION_TIMER))
+	obstructionTimer := time.NewTimer(time.Duration(config.OBSTRUCTION_TIMER))
 	obstructionTimer.Stop()
 
 	for {
@@ -73,7 +73,7 @@ func RunElevator(ch FsmChannels, id int) {
 			}
 
 		case elevator.Floor = <-ch.ArrivedAtFloor:
-			fmt.Printf("Floor sensor triggered: %d\n", elevator.Floor)
+			//fmt.Printf("Floor sensor triggered: %d\n", elevator.Floor)
 			onFloorArrival(elevator.Floor, &elevator, ch)
 
 			// Stop stuck timer on arrival

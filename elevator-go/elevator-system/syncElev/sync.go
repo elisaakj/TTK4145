@@ -323,6 +323,10 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 
 	for {
 		select {
+
+		//case <-time.After(100 * time.Millisecond):
+		//	broadcast(elevators, chMsgToUDP)
+
 		case newOrder := <-chNewLocalOrder:
 			if newOrder.Button == elevio.BUTTON_CAB {
 				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button), id)
@@ -456,6 +460,17 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 			}
 
 		case peer := <-chPeerUpdate:
+
+			var currentPeers []string
+			for peerUpdate := range chPeerUpdate {
+				currentPeers = peerUpdate.Peers
+				fmt.Println("=== Alive peers in sync ===")
+				for _, peer := range currentPeers {
+					fmt.Println(" -", peer)
+				}
+				fmt.Println("===================")
+			}
+
 			if len(peer.Lost) != 0 {
 				for _, stringLostID := range peer.Lost {
 					for _, elev := range elevators {
