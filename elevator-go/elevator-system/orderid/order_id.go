@@ -13,8 +13,9 @@ const (
 
 var store [config.NUM_FLOORS][config.NUM_BUTTONS]int
 
-func Load() error {
-	data, err := os.ReadFile(filePath)
+func Load(id string) error {
+	fileWithId := filePath + "_" + id
+	data, err := os.ReadFile(fileWithId)
 	if err != nil {
 		fmt.Println("No existing orderID store found.")
 		return nil // First startup is fine
@@ -22,24 +23,25 @@ func Load() error {
 	return json.Unmarshal(data, &store)
 }
 
-func saveToFile() error {
+func saveToFile(id string) error {
 	data, err := json.MarshalIndent(store, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filePath, data, 0644)
+	fileWithId := filePath + "_" + id
+	return os.WriteFile(fileWithId, data, 0644)
 }
 
-func UpdateIfGreater(floor, button, newID int) {
+func UpdateIfGreater(floor, button, newID int, id string) {
 	if newID > store[floor][button] {
 		store[floor][button] = newID
-		saveToFile()
+		saveToFile(id)
 	}
 }
 
-func IncrementAndGet(floor, button int) int {
+func IncrementAndGet(floor, button int, id string) int {
 	store[floor][button]++
-	saveToFile()
+	saveToFile(id)
 	return store[floor][button]
 }
 

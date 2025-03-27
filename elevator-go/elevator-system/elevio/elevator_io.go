@@ -15,6 +15,7 @@ var _mtx sync.Mutex
 var _conn net.Conn
 
 type MotorDirection int
+
 const (
 	DIRN_UP   MotorDirection = 1
 	DIRN_STOP MotorDirection = 0
@@ -22,10 +23,11 @@ const (
 )
 
 type ButtonType int
+
 const (
-	BUTTON_HALL_UP   ButtonType = iota
-	BUTTON_HALL_DOWN           
-	BUTTON_CAB                 
+	BUTTON_HALL_UP ButtonType = iota
+	BUTTON_HALL_DOWN
+	BUTTON_CAB
 )
 
 type ButtonEvent struct {

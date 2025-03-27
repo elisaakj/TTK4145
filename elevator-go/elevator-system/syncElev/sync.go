@@ -283,14 +283,12 @@ func getIndexByID(elevators []*config.SyncElevator, id string) int {
 	return -1
 }
 
-
-
 // call function as goroutine in main, sending to network, reciving from network to sync
 func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLocalState chan elevatorStateMachine.Elevator, chMsgFromUDP chan []config.SyncElevator,
 	chMsgToUDP chan []config.SyncElevator, chOrderToLocal chan elevio.ButtonEvent, chPeerUpdate chan peers.PeerUpdate, chClearLocalHallOrders chan bool) {
 
 	// Load persisted OrderID state from file
-	err := orderid.Load()
+	err := orderid.Load(id)
 	if err != nil {
 		fmt.Println("[OrderID] Warning: Failed to load persistent OrderID store:", err)
 	}
@@ -327,7 +325,7 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 		select {
 		case newOrder := <-chNewLocalOrder:
 			if newOrder.Button == elevio.BUTTON_CAB {
-				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button))
+				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button), id)
 				elevators[getIndexByID(elevators, id)].Requests[newOrder.Floor][newOrder.Button] = config.OrderInfo{
 					State:   config.Confirmed,
 					OrderID: currentID,
@@ -342,7 +340,7 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 			assignedIdx := elevatorManager.AssignOrders(elevators, newOrder, "")
 
 			if assignedIdx != -1 {
-				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button))
+				currentID := orderid.IncrementAndGet(newOrder.Floor, int(newOrder.Button), id)
 				elevators[assignedIdx].Requests[newOrder.Floor][newOrder.Button] = config.OrderInfo{
 					State:   config.Order,
 					OrderID: currentID,
@@ -367,7 +365,7 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 						}, elevators[assignedIdx].ID)
 
 						if assignedOpp != -1 && assignedOpp != assignedIdx {
-							currentID := orderid.IncrementAndGet(newOrder.Floor, int(oppositeButton))
+							currentID := orderid.IncrementAndGet(newOrder.Floor, int(oppositeButton), id)
 							elevators[assignedOpp].Requests[newOrder.Floor][oppositeButton] = config.OrderInfo{
 								State:   config.Order,
 								OrderID: currentID,
@@ -388,6 +386,12 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 			setHallLights(elevators)
 
 		case newState := <-chNewLocalState:
+			if newState.State == config.UNAVAILABLE {
+				// Set state BEFORE reassignment
+				elevators[localElevatorIndex].Behave = config.Behaviour(config.UNAVAILABLE)
+				elevatorManager.ReassignOrders(elevators, chNewLocalOrder, id)
+			}
+
 			if newState.Floor != elevators[localElevatorIndex].Floor ||
 				newState.State == config.IDLE ||
 				newState.State == config.DOOR_OPEN {
@@ -395,6 +399,7 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 				elevators[localElevatorIndex].Floor = newState.Floor
 				elevators[localElevatorIndex].Dir = config.Direction(int(newState.Dirn))
 			}
+
 			for floor := range elevators[localElevatorIndex].Requests {
 				for button := range elevators[localElevatorIndex].Requests[floor] {
 					if !newState.Requests[floor][button] &&
@@ -425,7 +430,7 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 							for b := range elev.Requests[f] {
 								if newElev.Requests[f][b].OrderID > elev.Requests[f][b].OrderID {
 									elev.Requests[f][b] = newElev.Requests[f][b]
-									orderid.UpdateIfGreater(f, b, newElev.Requests[f][b].OrderID)
+									orderid.UpdateIfGreater(f, b, newElev.Requests[f][b].OrderID, id)
 									fmt.Printf("[SYNC] %s updated (%d,%d) to OrderID %d\n", elev.ID, f, b, newElev.Requests[f][b].OrderID)
 								}
 							}

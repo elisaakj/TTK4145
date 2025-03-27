@@ -10,6 +10,7 @@ type FsmChannels struct {
 	NewOrder       chan elevio.ButtonEvent
 	ArrivedAtFloor chan int
 	Obstruction    chan bool
+	StuckElevator  chan int
 }
 
 func handleRequestButtonPress(elevator *Elevator, event elevio.ButtonEvent, ch FsmChannels) {
@@ -56,7 +57,6 @@ func onFloorArrival(newFloor int, elevator *Elevator, ch FsmChannels) {
 
 		*elevator = handleRequestsAndMaybeReverse(*elevator)
 
-
 	} else {
 		elevio.SetMotorDirection(elevator.Dirn)
 	}
@@ -92,21 +92,3 @@ func handleObstruction(elevator *Elevator, obstruction bool, ch FsmChannels) {
 
 	ch.Elevator <- *elevator
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
