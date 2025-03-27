@@ -57,6 +57,9 @@ func RunElevator(ch FsmChannels, id int) {
 	stuckTimer.Stop()
 	stuckTimerRunning := false
 
+	obstructionTimer := time.NewTicker(time.Duration(config.OBSTRUCTION_TIMER))
+	obstructionTimer.Stop()
+
 	for {
 		select {
 		case NewOrder := <-ch.NewOrder:
@@ -81,6 +84,8 @@ func RunElevator(ch FsmChannels, id int) {
 
 		case obstruction := <-ch.Obstruction:
 			fmt.Printf("Obstruction event: %t\n", obstruction)
+
+			obstructionTimer.Reset(time.Duration(config.OBSTRUCTION_TIMER) * time.Second)
 			handleObstruction(&elevator, obstruction, ch)
 
 		case <-time.After(time.Duration(config.DOOR_OPEN_DURATION) * time.Second):
@@ -98,6 +103,12 @@ func RunElevator(ch FsmChannels, id int) {
 				ch.Elevator <- elevator
 				stuckTimerRunning = false
 			}
+
+		case <-obstructionTimer.C:
+			elevio.SetMotorDirection(elevio.DIRN_STOP)
+			elevator.State = config.UNAVAILABLE
+			handleDoorTimeout(&elevator, ch)
+			ch.Elevator <- elevator
 		}
 	}
 }

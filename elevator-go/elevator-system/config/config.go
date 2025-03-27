@@ -9,6 +9,8 @@ const (
 	INVALID_FLOOR      = -1
 	DOOR_OPEN_DURATION = 3
 	STUCK_TIMER        = 5
+	OBSTRUCTION_TIMER  = 5
+	TRAVEL_TIME        = 10
 
 	// disse er bare i main, men uryddig å ha de definert der.. hmm
 	DEFAULT_ID = 1
@@ -51,7 +53,7 @@ type OrderInfo struct {
 type SyncElevator struct {
 	ID       string
 	Floor    int
-	Dir      Direction
+	Dirn     Direction
 	Requests [][]OrderInfo
 	OrderID  int
 	Behave   Behaviour

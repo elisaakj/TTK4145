@@ -5,19 +5,24 @@ import (
 	"Driver-go/elevator-system/elevio"
 )
 
+type DirnBehaviourPair struct {
+	Dirn  config.Direction
+	State config.ElevatorState
+}
+
 func AssignOrders(elevators []*config.SyncElevator, newOrder elevio.ButtonEvent, excludeID string) int {
 	bestElevIndex := -1
 	bestScore := 100000
 
 	for i, elev := range elevators {
-		
+
 		if elev.Behave == config.Behaviour(3) { // UNAVAILABLE
 			continue
 		}
 
 		score := costFunction(elev, newOrder)
 		if elev.ID == excludeID {
-    		score += 5 // discourage assigning to the same elevator again
+			score += 5 // discourage assigning to the same elevator again
 		}
 
 		if score < bestScore {
@@ -44,7 +49,7 @@ func ReassignOrders(elevators []*config.SyncElevator, chNewLocalOrder chan<- ele
 						Floor:  floor,
 						Button: elevio.ButtonType(button),
 					}
-					
+
 					assignedIdx := AssignOrders(elevators, newOrder, "")
 
 					if assignedIdx != -1 {
@@ -85,7 +90,6 @@ func abs(a int) int {
 	return a
 }
 
-
 func costFunction(elev *config.SyncElevator, order elevio.ButtonEvent) int {
 	distance := abs(elev.Floor - order.Floor)
 	cost := distance
@@ -96,8 +100,8 @@ func costFunction(elev *config.SyncElevator, order elevio.ButtonEvent) int {
 	}
 
 	// Penalize elevators going in the wrong direction
-	if (elev.Dir == config.Up && order.Floor < elev.Floor) ||
-		(elev.Dir == config.Down && order.Floor > elev.Floor) {
+	if (elev.Dirn == config.Up && order.Floor < elev.Floor) ||
+		(elev.Dirn == config.Down && order.Floor > elev.Floor) {
 		cost += 4
 	}
 
@@ -109,4 +113,126 @@ func costFunction(elev *config.SyncElevator, order elevio.ButtonEvent) int {
 	return cost
 }
 
+/*
+func costFunction(elev *config.SyncElevator, order elevio.ButtonEvent) int {
+	if elev.Behave != config.Behaviour(config.UNAVAILABLE) {
+		e := new(config.SyncElevator)
+		*e = *elev
+		e.Requests[order.Floor][order.Button].State = config.Confirmed
 
+		duration := 0
+
+		switch e.Behave {
+		case config.Behaviour(config.IDLE):
+			determineNextDirection(*e)
+			if e.Dirn == config.Stop {
+				return duration
+			}
+		case config.Behaviour(config.MOVING):
+			duration += config.TRAVEL_TIME / 2
+			e.Floor += int(e.Dirn)
+		case config.Behaviour(config.DOOR_OPEN):
+			duration -= config.DOOR_OPEN_DURATION / 2
+		}
+
+		for {
+			if stopAtCurrentFloor(*e) {
+				clearRequestsAtCurrentFloor(e)
+				duration += config.DOOR_OPEN_DURATION
+				determineNextDirection(*e)
+				if e.Dirn == config.Stop {
+					return duration
+				}
+			}
+			e.Floor += int(e.Dirn)
+			duration += config.TRAVEL_TIME
+		}
+	}
+	return 999
+}
+
+func determineNextDirection(e config.SyncElevator) DirnBehaviourPair {
+
+	switch e.Dirn {
+	case config.Up:
+		if hasRequestsAbove(e) {
+			return DirnBehaviourPair{config.Up, config.MOVING}
+		} else if hasRequestsBelow(e) {
+			return DirnBehaviourPair{config.Down, config.MOVING}
+		}
+	case config.Down:
+		if hasRequestsBelow(e) {
+			return DirnBehaviourPair{config.Down, config.MOVING}
+		} else if hasRequestsAbove(e) {
+			return DirnBehaviourPair{config.Up, config.MOVING}
+		}
+	case config.Stop:
+		if hasRequestsAbove(e) {
+			return DirnBehaviourPair{config.Up, config.MOVING}
+		} else if hasRequestsBelow(e) {
+			return DirnBehaviourPair{config.Down, config.MOVING}
+		}
+	}
+	return DirnBehaviourPair{config.Stop, config.IDLE}
+}
+
+func stopAtCurrentFloor(e config.SyncElevator) bool {
+	if e.Floor < 0 || e.Floor >= len(e.Requests) {
+		return false
+	}
+
+	if e.Requests[e.Floor][elevio.BUTTON_CAB].State == config.Confirmed ||
+		e.Requests[e.Floor][elevio.BUTTON_HALL_UP].State == config.Confirmed ||
+		e.Requests[e.Floor][elevio.BUTTON_HALL_DOWN].State == config.Confirmed {
+		return true
+	}
+
+	switch e.Dirn {
+	case config.Down:
+		return !hasRequestsBelow(e)
+	case config.Up:
+		return !hasRequestsAbove(e)
+	case config.Stop:
+		return true
+	}
+	return false
+}
+
+func clearRequestsAtCurrentFloor(elev *config.SyncElevator) {
+	elev.Requests[elev.Floor][int(elevio.BUTTON_CAB)].State = config.None
+	switch {
+	case elev.Dirn == config.Up:
+		elev.Requests[elev.Floor][int(config.Up)].State = config.None
+		if !hasRequestsAbove(*elev) {
+			elev.Requests[elev.Floor][int(elevio.BUTTON_HALL_DOWN)].State = config.None
+		}
+	case elev.Dirn == config.Down:
+		elev.Requests[elev.Floor][int(elevio.BUTTON_HALL_DOWN)].State = config.None
+		if !hasRequestsBelow(*elev) {
+			elev.Requests[elev.Floor][int(config.Up)].State = config.None
+		}
+	}
+}
+
+func hasRequestsAbove(e config.SyncElevator) bool {
+	for f := e.Floor + 1; f < config.NUM_FLOORS; f++ {
+		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
+			if e.Requests[f][btn].State == config.Confirmed {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasRequestsBelow(e config.SyncElevator) bool {
+	for f := 0; f < e.Floor; f++ {
+		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
+			if e.Requests[f][btn].State == config.Confirmed {
+				return true
+			}
+		}
+	}
+	return false
+}
+*/

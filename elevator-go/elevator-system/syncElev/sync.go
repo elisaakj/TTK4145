@@ -105,7 +105,7 @@ func broadcast(elevators []*config.SyncElevator, chTx chan<- []config.SyncElevat
 // 				newState.State == config.DOOR_OPEN {
 // 				elevators[localElevatorIndex].Behave = config.Behaviour(int(newState.State))
 // 				elevators[localElevatorIndex].Floor = newState.Floor
-// 				elevators[localElevatorIndex].Dir = config.Direction(int(newState.Dirn))
+// 				elevators[localElevatorIndex].Dirn = config.Direction(int(newState.Dirn))
 // 			}
 // 			for floor := range elevators[localElevatorIndex].Requests {
 // 				for button := range elevators[localElevatorIndex].Requests[floor] {
@@ -207,7 +207,7 @@ func updateElevators(elevators []*config.SyncElevator, newElevators []config.Syn
 							elev.Requests[floor][button] = newElevators[localElevatorIndex].Requests[floor][button]
 						}
 						elev.Floor = newElevators[localElevatorIndex].Floor
-						elev.Dir = newElevators[localElevatorIndex].Dir
+						elev.Dirn = newElevators[localElevatorIndex].Dirn
 						elev.Behave = newElevators[localElevatorIndex].Behave
 					}
 				}
@@ -234,7 +234,7 @@ func addNewElevator(elevators *[]*config.SyncElevator, newElevator config.SyncEl
 	tempElev := new(config.SyncElevator)
 	*tempElev = syncElevatorInit(newElevator.ID)
 	(*tempElev).Behave = newElevator.Behave
-	(*tempElev).Dir = newElevator.Dir
+	(*tempElev).Dirn = newElevator.Dirn
 	(*tempElev).Floor = newElevator.Floor
 	for floor := range tempElev.Requests {
 		for button := range tempElev.Requests[floor] {
@@ -397,7 +397,7 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 				newState.State == config.DOOR_OPEN {
 				elevators[localElevatorIndex].Behave = config.Behaviour(int(newState.State))
 				elevators[localElevatorIndex].Floor = newState.Floor
-				elevators[localElevatorIndex].Dir = config.Direction(int(newState.Dirn))
+				elevators[localElevatorIndex].Dirn = config.Direction(int(newState.Dirn))
 			}
 
 			for floor := range elevators[localElevatorIndex].Requests {
@@ -436,7 +436,7 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 							}
 						}
 						elev.Floor = newElev.Floor
-						elev.Dir = newElev.Dir
+						elev.Dirn = newElev.Dirn
 						elev.Behave = newElev.Behave
 					}
 				}
