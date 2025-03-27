@@ -28,20 +28,11 @@ func initElevator(id int) Elevator {
 }
 
 func RunElevator(ch FsmChannels, id int) {
+
 	elevator := initElevator(id)
 
 	for i := range elevator.Requests {
 		elevator.Requests[i] = make([]bool, config.NUM_BUTTONS)
-	}
-
-	// Re-emit old cab calls to FSM
-	for f := 0; f < config.NUM_FLOORS; f++ {
-		if elevator.Requests[f][elevio.BUTTON_CAB] {
-			ch.NewOrder <- elevio.ButtonEvent{
-				Floor:  f,
-				Button: elevio.BUTTON_CAB,
-			}
-		}
 	}
 
 	if elevator.Floor == config.INVALID_FLOOR {
@@ -50,6 +41,8 @@ func RunElevator(ch FsmChannels, id int) {
 		elevator.State = config.MOVING
 		elevio.SetMotorDirection(elevator.Dirn)
 	}
+
+	fmt.Printf("[FSM] Elevator state after init: Floor=%d, State=%v, Requests=%v\n", elevator.Floor, elevator.State, elevator.Requests)
 
 	ch.Elevator <- elevator
 

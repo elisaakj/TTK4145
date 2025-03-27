@@ -27,9 +27,9 @@ func main() {
 	}
 
 	//simFromHome := "172.26.129.47:20101"
-	// addr := fmt.Sprintf("172.26.129.47:%d", config.BASE_PORT+idInt)
+	addr := fmt.Sprintf("172.26.129.47:%d", config.BASE_PORT+idInt)
 	//addr := "localhost:15657"
-	addr := fmt.Sprintf("localhost:%d", config.BASE_PORT+idInt)
+	//addr := fmt.Sprintf("localhost:%d", config.BASE_PORT+idInt)
 	elevio.Init(addr, config.NUM_FLOORS)
 
 	// channels for syncElev

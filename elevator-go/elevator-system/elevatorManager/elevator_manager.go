@@ -10,7 +10,7 @@ type DirnBehaviourPair struct {
 	State config.ElevatorState
 }
 
-func AssignOrders(elevators []*config.SyncElevator, newOrder elevio.ButtonEvent, excludeID string) int {
+func AssignOrders(elevators []*config.SyncElevator, newOrder elevio.ButtonEvent) int {
 	bestElevIndex := -1
 	bestScore := 100000
 
@@ -21,9 +21,6 @@ func AssignOrders(elevators []*config.SyncElevator, newOrder elevio.ButtonEvent,
 		}
 
 		score := costFunction(elev, newOrder)
-		if elev.ID == excludeID {
-			score += 8 // discourage assigning to the same elevator again
-		}
 
 		if score < bestScore {
 			bestScore = score
@@ -50,7 +47,7 @@ func ReassignOrders(elevators []*config.SyncElevator, chNewLocalOrder chan<- ele
 						Button: elevio.ButtonType(button),
 					}
 
-					assignedIdx := AssignOrders(elevators, newOrder, "")
+					assignedIdx := AssignOrders(elevators, newOrder)
 
 					if assignedIdx != -1 {
 						elevators[assignedIdx].Requests[floor][button].State = config.Order
@@ -151,16 +148,6 @@ func costFunction(elev *config.SyncElevator, order elevio.ButtonEvent) int {
 
 	return cost
 }
-
-
-
-
-
-
-
-
-
-
 
 /*
 func costFunction(elev *config.SyncElevator, order elevio.ButtonEvent) int {
