@@ -47,7 +47,7 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 	elevators = append(elevators, localElevator)
 	localElevatorIndex = getIndexByID(elevators, id)
 
-	connectionTimer := time.NewTimer(time.Duration(3) * time.Second)
+	connectionTimer := time.NewTimer(time.Duration(config.CONNECTION_TIMER) * time.Second)
 	select {
 	case newElevators := <-chMsgFromUDP:
 		for _, elev := range newElevators {

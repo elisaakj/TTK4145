@@ -71,8 +71,8 @@ func costFunction(elev *config.SyncElevator, order elevio.ButtonEvent) int {
 		cost += 2
 	}
 
-	if (elev.Dirn == config.Up && order.Floor < elev.Floor) ||
-		(elev.Dirn == config.Down && order.Floor > elev.Floor) {
+	if (elev.Dirn == config.Direction(elevio.DIRN_UP) && order.Floor < elev.Floor) ||
+		(elev.Dirn == config.Direction(elevio.DIRN_DOWN) && order.Floor > elev.Floor) {
 		cost += 3
 	}
 

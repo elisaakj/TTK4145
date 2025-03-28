@@ -8,11 +8,11 @@ const (
 
 	INVALID_FLOOR      = -1
 	DOOR_OPEN_DURATION = 3
-	STUCK_TIMER        = 5
-	OBSTRUCTION_TIMER  = 5
-	TRAVEL_TIME        = 10
 
-	// disse er bare i main, men uryddig å ha de definert der.. hmm
+	CONNECTION_TIMER  = 3
+	STUCK_TIMER       = 5
+	OBSTRUCTION_TIMER = 5
+
 	DEFAULT_ID = 1
 	BASE_PORT  = 20100
 )
@@ -31,12 +31,6 @@ const (
 type Direction int
 type RequestState int
 type Behaviour int
-
-const (
-	Up   Direction = 1
-	Down Direction = -1
-	Stop Direction = 0
-)
 
 const (
 	None      RequestState = 0
