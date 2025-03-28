@@ -1,7 +1,0 @@
-Conventions
-    - Variables: camelCase
-    - Constants: SCREAMING_SNAKE_CASE
-    - Functions: camelCase (CamelCase if external)
-    - Types (structs, enums): PascalCase
-    - Objects: camelCase
-    - File names: snake_case.go

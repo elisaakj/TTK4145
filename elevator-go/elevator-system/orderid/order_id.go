@@ -1,7 +1,7 @@
 package orderid
 
 import (
-	"Driver-go/elevator-system/config"
+	"Driver-go/elevator-system/common"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,7 +11,7 @@ const (
 	filePath = "orderid_store.json"
 )
 
-var store [config.NUM_FLOORS][config.NUM_BUTTONS]int
+var store [common.NUM_FLOORS][common.NUM_BUTTONS]int
 
 func Load(id string) error {
 	fileWithId := filePath + "_" + id
@@ -47,8 +47,8 @@ func IncrementAndGet(floor, button int, id string) int {
 
 func DebugPrint() {
 	fmt.Println("===== OrderID Store =====")
-	for f := 0; f < config.NUM_FLOORS; f++ {
-		for b := 0; b < config.NUM_BUTTONS; b++ {
+	for f := 0; f < common.NUM_FLOORS; f++ {
+		for b := 0; b < common.NUM_BUTTONS; b++ {
 			fmt.Printf("(%d,%d): %d\t", f, b, store[f][b])
 		}
 		fmt.Println()

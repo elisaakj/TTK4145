@@ -1,19 +1,11 @@
 package elevatorStateMachine
 
 import (
-	"Driver-go/elevator-system/config"
+	"Driver-go/elevator-system/common"
 	"Driver-go/elevator-system/elevio"
 )
 
-type FsmChannels struct {
-	Elevator       chan Elevator
-	NewOrder       chan elevio.ButtonEvent
-	ArrivedAtFloor chan int
-	Obstruction    chan bool
-	StuckElevator  chan int
-}
-
-func handleRequestButtonPress(elevator *Elevator, event elevio.ButtonEvent, ch FsmChannels) {
+func handleRequestButtonPress(elevator *common.Elevator, event common.ButtonEvent, ch common.FsmChannels) {
 	// if already requested, do nothing
 	if elevator.Requests[event.Floor][event.Button] {
 		return
@@ -24,17 +16,17 @@ func handleRequestButtonPress(elevator *Elevator, event elevio.ButtonEvent, ch F
 	// elevator.OrderID = (elevator.OrderID + 1) % 1000 need to implement this probably
 
 	switch elevator.State {
-	case config.DOOR_OPEN:
+	case common.DOOR_OPEN:
 		if elevator.Floor == event.Floor {
 			*elevator = handleRequestsAndMaybeReverse(*elevator)
 		}
 
-	case config.IDLE:
+	case common.IDLE:
 		choice := determineNextDirection(*elevator)
 		elevator.Dirn = choice.Dirn
 		elevator.State = choice.State
 
-		if elevator.State == config.MOVING {
+		if elevator.State == common.MOVING {
 			elevio.SetMotorDirection(elevator.Dirn)
 		} else {
 			elevio.SetDoorOpenLamp(true)
@@ -45,13 +37,13 @@ func handleRequestButtonPress(elevator *Elevator, event elevio.ButtonEvent, ch F
 	ch.Elevator <- *elevator
 }
 
-func onFloorArrival(newFloor int, elevator *Elevator, ch FsmChannels) {
+func onFloorArrival(newFloor int, elevator *common.Elevator, ch common.FsmChannels) {
 	elevator.Floor = newFloor
 	elevio.SetFloorIndicator(newFloor)
 
 	if stopAtCurrentFloor(*elevator) {
-		elevio.SetMotorDirection(elevio.DIRN_STOP)
-		elevator.State = config.DOOR_OPEN
+		elevio.SetMotorDirection(common.DIRN_STOP)
+		elevator.State = common.DOOR_OPEN
 		elevio.SetDoorOpenLamp(true)
 
 		*elevator = handleRequestsAndMaybeReverse(*elevator)
@@ -63,7 +55,7 @@ func onFloorArrival(newFloor int, elevator *Elevator, ch FsmChannels) {
 	ch.Elevator <- *elevator
 }
 
-func handleDoorTimeout(elevator *Elevator, ch FsmChannels) {
+func handleDoorTimeout(elevator *common.Elevator, ch common.FsmChannels) {
 	if elevator.Obstructed {
 		return
 	}
@@ -79,14 +71,14 @@ func handleDoorTimeout(elevator *Elevator, ch FsmChannels) {
 	elevator.Dirn = choice.Dirn
 	elevator.State = choice.State
 
-	if elevator.State == config.MOVING {
+	if elevator.State == common.MOVING {
 		elevio.SetMotorDirection(elevator.Dirn)
 	}
 
 	ch.Elevator <- *elevator
 }
 
-func handleObstruction(elevator *Elevator, obstruction bool, ch FsmChannels) {
+func handleObstruction(elevator *common.Elevator, obstruction bool, ch common.FsmChannels) {
 	elevator.Obstructed = obstruction
 
 	ch.Elevator <- *elevator

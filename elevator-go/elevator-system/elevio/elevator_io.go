@@ -1,7 +1,7 @@
 package elevio
 
 import (
-	"Driver-go/elevator-system/config"
+	"Driver-go/elevator-system/common"
 	"fmt"
 	"net"
 	"sync"
@@ -11,30 +11,9 @@ import (
 const _pollRate = 20 * time.Millisecond
 
 var _initialized bool = false
-var _numFloors int = config.NUM_FLOORS
+var _numFloors int = common.NUM_FLOORS
 var _mtx sync.Mutex
 var _conn net.Conn
-
-type MotorDirection int
-
-const (
-	DIRN_UP   MotorDirection = 1
-	DIRN_STOP MotorDirection = 0
-	DIRN_DOWN MotorDirection = -1
-)
-
-type ButtonType int
-
-const (
-	BUTTON_HALL_UP ButtonType = iota
-	BUTTON_HALL_DOWN
-	BUTTON_CAB
-)
-
-type ButtonEvent struct {
-	Floor  int
-	Button ButtonType
-}
 
 func Init(addr string, numFloors int) {
 	if _initialized {
@@ -51,11 +30,11 @@ func Init(addr string, numFloors int) {
 	_initialized = true
 }
 
-func SetMotorDirection(dir MotorDirection) {
+func SetMotorDirection(dir common.MotorDirection) {
 	write([4]byte{1, byte(dir), 0, 0})
 }
 
-func SetButtonLamp(button ButtonType, floor int, value bool) {
+func SetButtonLamp(button common.ButtonType, floor int, value bool) {
 	write([4]byte{2, byte(button), byte(floor), boolToByte(value)})
 }
 
@@ -71,15 +50,15 @@ func SetStopLamp(value bool) {
 	write([4]byte{5, boolToByte(value), 0, 0})
 }
 
-func PollButtons(receiver chan<- ButtonEvent) {
+func PollButtons(receiver chan<- common.ButtonEvent) {
 	prev := make([][3]bool, _numFloors)
 	for {
 		time.Sleep(_pollRate)
 		for f := 0; f < _numFloors; f++ {
-			for b := ButtonType(0); b < 3; b++ {
+			for b := common.ButtonType(0); b < 3; b++ {
 				v := GetButton(b, f)
 				if v != prev[f][b] && v != false {
-					receiver <- ButtonEvent{f, ButtonType(b)}
+					receiver <- common.ButtonEvent{f, common.ButtonType(b)}
 				}
 				prev[f][b] = v
 			}
@@ -123,7 +102,7 @@ func PollObstructionSwitch(receiver chan<- bool) {
 	}
 }
 
-func GetButton(button ButtonType, floor int) bool {
+func GetButton(button common.ButtonType, floor int) bool {
 	a := read([4]byte{6, byte(button), byte(floor), 0})
 	return byteToBool(a[1])
 }
