@@ -3,7 +3,6 @@ package elevatorStateMachine
 import (
 	"Driver-go/elevator-system/config"
 	"Driver-go/elevator-system/elevio"
-	"fmt"
 )
 
 type FsmChannels struct {
@@ -15,9 +14,6 @@ type FsmChannels struct {
 }
 
 func handleRequestButtonPress(elevator *Elevator, event elevio.ButtonEvent, ch FsmChannels) {
-
-	fmt.Printf("[FSM] New order received: %+v, current floor: %d, state: %v\n", event, elevator.Floor, elevator.State)
-
 	// if already requested, do nothing
 	if elevator.Requests[event.Floor][event.Button] {
 		return

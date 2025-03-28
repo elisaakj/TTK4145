@@ -69,8 +69,8 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 	for {
 		select {
 
-		case <-time.After(100 * time.Millisecond):
-			broadcast(elevators, chMsgToUDP)
+		//case <-time.After(100 * time.Millisecond):
+		//	broadcast(elevators, chMsgToUDP)
 
 		case newOrder := <-chNewLocalOrder:
 			if newOrder.Button == elevio.BUTTON_CAB {
@@ -208,16 +208,6 @@ func SyncElevators(id string, chNewLocalOrder chan elevio.ButtonEvent, chNewLoca
 
 		case peer := <-chPeerUpdate:
 
-			var currentPeers []string
-			for peerUpdate := range chPeerUpdate {
-				currentPeers = peerUpdate.Peers
-				fmt.Println("=== Alive peers in sync ===")
-				for _, peer := range currentPeers {
-					fmt.Println(" -", peer)
-				}
-				fmt.Println("===================")
-			}
-
 			if len(peer.Lost) != 0 {
 				for _, stringLostID := range peer.Lost {
 					for _, elev := range elevators {
@@ -251,7 +241,6 @@ func removeCompletedOrders(elevators []*config.SyncElevator) {
 	}
 }
 
-// Updates local elevator array from received elevator array from network
 func updateElevators(elevators []*config.SyncElevator, newElevators []config.SyncElevator, localElevatorIndex int) {
 	if elevators[localElevatorIndex].ID != newElevators[localElevatorIndex].ID {
 		for _, elev := range elevators {
@@ -284,7 +273,6 @@ func updateElevators(elevators []*config.SyncElevator, newElevators []config.Syn
 	}
 }
 
-// Adds newElevator to local elevator array
 func addNewElevator(elevators *[]*config.SyncElevator, newElevator config.SyncElevator) {
 	tempElev := new(config.SyncElevator)
 	*tempElev = syncElevatorInit(newElevator.ID)

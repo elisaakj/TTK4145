@@ -72,17 +72,5 @@ func main() {
 	go syncElev.SyncElevators(id, chNewLocalOrder, chNewLocalState, chMsgFromUDP, chMsgToUDP,
 		chOrderToLocal, chPeerUpdate, chClearLocalHallOrders)
 
-	go func() {
-		var currentPeers []string
-		for peerUpdate := range chPeerUpdate {
-			currentPeers = peerUpdate.Peers
-			fmt.Println("=== Alive peers ===")
-			for _, peer := range currentPeers {
-				fmt.Println(" -", peer)
-			}
-			fmt.Println("===================")
-		}
-	}()
-
 	select {}
 }

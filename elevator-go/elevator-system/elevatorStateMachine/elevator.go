@@ -42,8 +42,6 @@ func RunElevator(ch FsmChannels, id int) {
 		elevio.SetMotorDirection(elevator.Dirn)
 	}
 
-	fmt.Printf("[FSM] Elevator state after init: Floor=%d, State=%v, Requests=%v\n", elevator.Floor, elevator.State, elevator.Requests)
-
 	ch.Elevator <- elevator
 
 	stuckTimer := time.NewTimer(time.Duration(config.STUCK_TIMER) * time.Second)
