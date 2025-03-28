@@ -1,6 +1,7 @@
 package common
 
 type ElevatorState int
+
 const (
 	IDLE ElevatorState = iota
 	DOOR_OPEN
@@ -13,7 +14,6 @@ type FsmChannels struct {
 	NewOrder       chan ButtonEvent
 	ArrivedAtFloor chan int
 	Obstruction    chan bool
-	StuckElevator  chan int
 }
 
 type DirnBehaviourPair struct {
@@ -28,10 +28,10 @@ type Elevator struct {
 	Requests   [][]bool
 	State      ElevatorState
 	Obstructed bool
-	OrderID    int
 }
 
 type MotorDirection int
+
 const (
 	DIRN_UP   MotorDirection = 1
 	DIRN_STOP MotorDirection = 0
@@ -39,6 +39,7 @@ const (
 )
 
 type ButtonType int
+
 const (
 	BUTTON_HALL_UP ButtonType = iota
 	BUTTON_HALL_DOWN
@@ -51,6 +52,7 @@ type ButtonEvent struct {
 }
 
 type RequestState int
+
 const (
 	NONE RequestState = iota
 	ORDER
@@ -68,6 +70,5 @@ type SyncElevator struct {
 	Floor    int
 	Dirn     MotorDirection
 	Requests [][]OrderInfo
-	OrderID  int
 	State    ElevatorState
 }

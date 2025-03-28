@@ -26,7 +26,10 @@ func main() {
 		idInt = common.DEFAULT_ID
 	}
 
-	addr := "localhost:15657"
+	//simFromHome := "172.26.129.47:20101"
+	// addr := fmt.Sprintf("172.26.129.47:%d", common.BASE_PORT+idInt)
+	//addr := "localhost:15657"
+	addr := fmt.Sprintf("localhost:%d", common.BASE_PORT+idInt)
 	elevio.Init(addr, common.NUM_FLOORS)
 
 	// channels for syncElev
@@ -44,7 +47,6 @@ func main() {
 	// channels for local elevator
 	chArrivedAtFloor := make(chan int)
 	chObstruction := make(chan bool)
-	chStuckElevator := make(chan int, 10)
 
 	// goroutines for local elevator
 	go elevio.PollButtons(chNewLocalOrder)
@@ -56,7 +58,6 @@ func main() {
 		NewOrder:       chOrderToLocal,
 		ArrivedAtFloor: chArrivedAtFloor,
 		Obstruction:    chObstruction,
-		StuckElevator:  chStuckElevator,
 	}
 
 	go elevatorStateMachine.RunElevator(ch, idInt)

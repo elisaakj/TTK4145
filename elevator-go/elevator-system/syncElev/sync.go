@@ -2,8 +2,8 @@ package syncElev
 
 import (
 	"Driver-go/elevator-system/common"
-	"Driver-go/elevator-system/elevio"
 	"Driver-go/elevator-system/elevatorManager"
+	"Driver-go/elevator-system/elevio"
 	"Driver-go/elevator-system/orderid"
 	"Network-go/network/peers"
 	"fmt"
@@ -35,7 +35,6 @@ func SyncElevators(id string, chNewLocalOrder chan common.ButtonEvent, chNewLoca
 	if err != nil {
 		fmt.Println("[OrderID] Warning: Failed to load persistent OrderID store:", err)
 	}
-	orderid.DebugPrint()
 
 	var localElevatorIndex int
 
