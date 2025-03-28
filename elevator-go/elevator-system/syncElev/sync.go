@@ -111,12 +111,10 @@ func SyncElevators(id string, chNewLocalOrder chan common.ButtonEvent, chNewLoca
 								State:   common.ORDER,
 								OrderID: currentID,
 							}
-							fmt.Printf("[ASSIGN] Elevator %s gets (%d,%d) OrderID: %d\n", elevators[assignedOpp].ID, newOrder.Floor, oppositeButton, currentID)
+							fmt.Printf("Elevator %s gets (%d,%d) OrderID: %d\n", elevators[assignedOpp].ID, newOrder.Floor, oppositeButton, currentID)
 							if elevators[assignedOpp].ID == id {
 								chOrderToLocal <- common.ButtonEvent{Floor: newOrder.Floor, Button: oppositeButton}
 							}
-						} else {
-							fmt.Printf("[SKIP] Opposite call (%d, %v) not assigned to avoid assigning both directions to elevator %s\n", newOrder.Floor, oppositeButton, elevators[assignedIdx].ID)
 						}
 					}
 				}
@@ -173,7 +171,6 @@ func SyncElevators(id string, chNewLocalOrder chan common.ButtonEvent, chNewLoca
 								if newElev.Requests[f][b].OrderID > elev.Requests[f][b].OrderID {
 									elev.Requests[f][b] = newElev.Requests[f][b]
 									orderid.UpdateIfGreater(f, b, newElev.Requests[f][b].OrderID, id)
-									fmt.Printf("[SYNC] %s updated (%d,%d) to OrderID %d\n", elev.ID, f, b, newElev.Requests[f][b].OrderID)
 								}
 							}
 						}
