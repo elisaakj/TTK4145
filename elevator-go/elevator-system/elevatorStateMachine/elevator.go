@@ -91,6 +91,13 @@ func RunElevator(ch FsmChannels, id int) {
 				fmt.Printf("Elevator %d is stuck!\n", elevator.ID)
 				elevio.SetMotorDirection(elevio.DIRN_STOP)
 				elevator.State = config.UNAVAILABLE
+
+				for f := 0; f < config.NUM_FLOORS; f++ {
+					for b := 0; b < config.NUM_BUTTONS; b++ {
+						elevator.Requests[f][b] = false
+					}
+				}
+
 				ch.Elevator <- elevator
 				stuckTimerRunning = false
 			}

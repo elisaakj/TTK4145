@@ -33,7 +33,6 @@ func hasRequestsBelow(e Elevator) bool {
 	return false
 }
 
-
 func determineNextDirection(e Elevator) DirnBehaviourPair {
 	if ifHaveRequestInSameDirection(e) {
 		return DirnBehaviourPair{elevio.DIRN_STOP, config.DOOR_OPEN}
@@ -63,7 +62,11 @@ func determineNextDirection(e Elevator) DirnBehaviourPair {
 }
 
 func stopAtCurrentFloor(e Elevator) bool {
-	if e.Requests[e.Floor][elevio.BUTTON_CAB] || e.Requests[e.Floor][elevio.BUTTON_HALL_UP] || e.Requests[e.Floor][elevio.BUTTON_HALL_DOWN] {
+	if e.Floor < 0 || e.Floor >= config.NUM_FLOORS {
+		return false
+	}
+
+	if e.Requests[e.Floor][elevio.BUTTON_CAB] {
 		return true
 	}
 
@@ -78,8 +81,6 @@ func stopAtCurrentFloor(e Elevator) bool {
 	return false
 }
 
-
-
 func clearRequestsAtCurrentFloor(e Elevator) Elevator {
 	for btn := 0; btn < config.NUM_BUTTONS; btn++ {
 		e.Requests[e.Floor][btn] = false
@@ -87,7 +88,6 @@ func clearRequestsAtCurrentFloor(e Elevator) Elevator {
 	}
 	return e
 }
-
 
 func clearHallRequestInDirection(e Elevator) Elevator {
 	switch e.Dirn {
@@ -127,8 +127,6 @@ func clearHallRequestInDirection(e Elevator) Elevator {
 
 	return e
 }
-
-
 
 func ifHaveRequestInSameDirection(e Elevator) bool {
 	if e.Floor < 0 || e.Floor >= config.NUM_FLOORS {
@@ -190,9 +188,8 @@ func handleRequestsAndMaybeReverse(e Elevator) Elevator {
 	return e
 }
 
-
 // func handleRequestsAndMaybeReverse(e Elevator) Elevator {
-	
+
 // 	floor := e.Floor
 // 	hasCab := e.Requests[floor][elevio.BUTTON_CAB]
 // 	hasUp := e.Requests[floor][elevio.BUTTON_HALL_UP]
@@ -224,11 +221,7 @@ func handleRequestsAndMaybeReverse(e Elevator) Elevator {
 // 	return e
 // }
 
-
-
-
-
-// // To help reverse the elevator direction 
+// // To help reverse the elevator direction
 
 // func oppositeDirection(dir elevio.MotorDirection) elevio.MotorDirection {
 // 	if dir == elevio.DIRN_UP {
@@ -238,7 +231,6 @@ func handleRequestsAndMaybeReverse(e Elevator) Elevator {
 // 	}
 // 	return elevio.DIRN_STOP
 // }
-
 
 /*
 func clearRequestsImmediately(e Elevator, btnfloor int, btnType elevio.ButtonType) bool {
@@ -251,10 +243,8 @@ func clearRequestsImmediately(e Elevator, btnfloor int, btnType elevio.ButtonTyp
 	return false
 }*/
 
-
 // Check if the cab requests are opposite of hall requests, if so, reverse the direction, clear both lights and return the elevator
 // Otherwise, continues as normal
-
 
 // func hasRequestsAtCurrentFloor(e Elevator) bool {
 // 	if e.Floor < 0 || e.Floor >= config.NUM_FLOORS {
