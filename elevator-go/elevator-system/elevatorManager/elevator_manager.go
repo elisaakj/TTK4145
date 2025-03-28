@@ -13,7 +13,7 @@ func AssignOrders(elevators []*config.SyncElevator, newOrder elevio.ButtonEvent)
 	fmt.Printf("We now have %d elevators available\n", len(elevators))
 	for i, elev := range elevators {
 		fmt.Printf("Elevator ID%s\n", elev.ID)
-		if elev.Behave == config.Behaviour(config.UNAVAILABLE) {
+		if elev.State == config.State(config.UNAVAILABLE) {
 			fmt.Printf("Elevator ID%s is UNAVAILABLE\n", elev.ID)
 			continue
 		}
@@ -34,7 +34,7 @@ func AssignOrders(elevators []*config.SyncElevator, newOrder elevio.ButtonEvent)
 
 func ReassignOrders(elevators []*config.SyncElevator, chNewLocalOrder chan<- elevio.ButtonEvent, localElevID string) {
 	for _, elev := range elevators {
-		if elev.Behave != config.Behaviour(config.UNAVAILABLE) {
+		if elev.State != config.State(config.UNAVAILABLE) {
 			continue
 		}
 
@@ -67,7 +67,7 @@ func costFunction(elev *config.SyncElevator, order elevio.ButtonEvent) int {
 	distance := abs(elev.Floor - order.Floor)
 	cost := distance
 
-	if config.ElevatorState(elev.Behave) == config.MOVING {
+	if config.ElevatorState(elev.State) == config.MOVING {
 		cost += 2
 	}
 
@@ -76,11 +76,11 @@ func costFunction(elev *config.SyncElevator, order elevio.ButtonEvent) int {
 		cost += 3
 	}
 
-	if config.ElevatorState(elev.Behave) == config.IDLE {
+	if config.ElevatorState(elev.State) == config.IDLE {
 		cost -= 2
 	}
 
-	if config.ElevatorState(elev.Behave) == config.IDLE && elev.Floor == order.Floor {
+	if config.ElevatorState(elev.State) == config.IDLE && elev.Floor == order.Floor {
 		cost -= 1
 	}
 

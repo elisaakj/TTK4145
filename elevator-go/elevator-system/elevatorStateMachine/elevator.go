@@ -57,7 +57,6 @@ func RunElevator(ch FsmChannels, id int) {
 			fmt.Printf("RunElevator received order: %+v\n", NewOrder)
 			handleRequestButtonPress(&elevator, NewOrder, ch)
 
-			// Start stuck timer if elevator begins moving
 			if elevator.State == config.MOVING && !stuckTimerRunning {
 				stuckTimer.Reset(time.Duration(config.STUCK_TIMER) * time.Second)
 				stuckTimerRunning = true
@@ -67,7 +66,6 @@ func RunElevator(ch FsmChannels, id int) {
 			//fmt.Printf("Floor sensor triggered: %d\n", elevator.Floor)
 			onFloorArrival(elevator.Floor, &elevator, ch)
 
-			// Stop stuck timer on arrival
 			if stuckTimerRunning {
 				stuckTimer.Stop()
 				stuckTimerRunning = false
@@ -92,11 +90,7 @@ func RunElevator(ch FsmChannels, id int) {
 				elevio.SetMotorDirection(elevator.Dirn)
 				elevator.State = config.UNAVAILABLE
 
-				for f := 0; f < config.NUM_FLOORS; f++ {
-					for b := 0; b < config.NUM_BUTTONS-1; b++ {
-						elevator.Requests[f][b] = false
-					}
-				}
+				clearHallOrder(elevator)
 
 				ch.Elevator <- elevator
 				stuckTimerRunning = false
@@ -105,8 +99,19 @@ func RunElevator(ch FsmChannels, id int) {
 		case <-obstructionTimer.C:
 			elevio.SetMotorDirection(elevio.DIRN_STOP)
 			elevator.State = config.UNAVAILABLE
+
+			clearHallOrder(elevator)
+
 			handleDoorTimeout(&elevator, ch)
 			ch.Elevator <- elevator
+		}
+	}
+}
+
+func clearHallOrder(elevator Elevator) {
+	for f := 0; f < config.NUM_FLOORS; f++ {
+		for b := 0; b < config.NUM_BUTTONS-1; b++ {
+			elevator.Requests[f][b] = false
 		}
 	}
 }

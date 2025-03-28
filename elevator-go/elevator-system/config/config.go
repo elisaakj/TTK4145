@@ -1,7 +1,5 @@
 package config
 
-// consts for several modules should be defined here
-
 const (
 	NUM_FLOORS  = 4
 	NUM_BUTTONS = 3
@@ -26,11 +24,9 @@ const (
 	UNAVAILABLE
 )
 
-// Below is for syncElev, will fix structure later
-
 type Direction int
 type RequestState int
-type Behaviour int
+type State int
 
 const (
 	None      RequestState = 0
@@ -50,5 +46,5 @@ type SyncElevator struct {
 	Dirn     Direction
 	Requests [][]OrderInfo
 	OrderID  int
-	Behave   Behaviour
+	State    State
 }
