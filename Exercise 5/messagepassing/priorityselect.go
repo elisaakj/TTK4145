@@ -1,3 +1,4 @@
+
 package main
 
 import "fmt"
@@ -40,14 +41,21 @@ func resourceManager(takeLow chan Resource, takeHigh chan Resource, giveBack cha
     res := Resource{}
     
     for {
-        select {
-        case takeHigh<- res:
-            //fmt.Printf("[resource manager]: resource taken (high)\n")
-        case takeLow<- res:
-            //fmt.Printf("[resource manager]: resource taken (low)\n")
-        case res = <-giveBack:
-            //fmt.Printf("[resource manager]: resource returned\n")
-        }
+
+		select {
+		case takeHigh <- res:
+			//fmt.Printf("[resource manager]: resource taken (high)\n")
+		default: 
+			select {
+			case takeLow <- res:
+				//fmt.Printf("[resource manager]: resource taken (low)\n")
+			case takeHigh <- res:
+				//fmt.Printf("[resource manager]: resource taken (high)\n")
+			}
+		}
+
+		res = <- giveBack
+
     }
 }
     

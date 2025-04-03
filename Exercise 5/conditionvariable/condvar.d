@@ -1,4 +1,3 @@
-// FUNGERER IKKE
 
 import std.algorithm, std.concurrency, std.format, std.range, std.stdio, std.traits;
 import core.thread, core.sync.mutex, core.sync.condition;
@@ -46,7 +45,7 @@ class Resource(T) {
         
         queue.insert(id, priority);
         
-        while (queue[0].priority != priority){
+        while (queue.front() != id){
             cond.wait();
         }
         
@@ -59,7 +58,7 @@ class Resource(T) {
         mtx.lock();
         
         value = v;
-        
+        queue.popFront();
         cond.notifyAll();
         
         mtx.unlock();
